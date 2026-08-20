@@ -21,6 +21,10 @@ phone reaches the stage display without anyone typing an address.
 A room name is 1 to 64 characters of `a-z`, `0-9`, dash and underscore, and the
 server lowercases what it gets. `api`, `assets` and `healthz` are reserved.
 
+A screen or an API read does not bring a room into being. A command or a
+connected socket does. Reading a room that does not exist answers with the
+defaults, so a typo in a URL leaves nothing behind.
+
 ## Flags
 
 | Flag | Default | Controls |
@@ -190,6 +194,10 @@ stopped.
 
 Deleting a room deletes its snapshot. Clearing a room leaves the file in place
 and overwrites it with the defaults.
+
+A delete also closes the sockets on that room. A console watching it drops and
+reconnects to an empty room, rather than carrying on against a room nobody else
+can reach.
 
 ## Finding the server
 

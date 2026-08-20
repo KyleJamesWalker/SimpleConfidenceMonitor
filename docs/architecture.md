@@ -65,8 +65,10 @@ timer reuses this type, so the two cannot drift apart in behavior.
 
 ### `src/hub.rs`
 
-The room registry. Rooms are created on first reference and dropped on delete.
-It also restores rooms at startup and hands each new room the snapshot writer.
+The room registry. A command or a socket creates a room, a read does not, and a
+delete retires it: the room closes, its sockets end, and it takes no further
+commands. The hub also restores rooms at startup and hands each new room the
+snapshot writer.
 
 ### `src/routes.rs`
 
