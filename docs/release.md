@@ -66,6 +66,10 @@ The port and the state directory sit in the image `ENTRYPOINT` rather than its
 `CMD`. Arguments after the image name are added to them rather than replacing
 them, so passing `--token` cannot silently turn persistence off.
 
+`deploy/portainer-stack.yml` is the same thing as a compose stack, for Portainer
+or plain `docker compose`. It needs `SCM_TOKEN` set, and takes `SCM_TAG`,
+`SCM_PORT` and `TZ`.
+
 | Tag | Points at |
 |---|---|
 | `latest` | The most recent release |
