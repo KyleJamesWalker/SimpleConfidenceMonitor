@@ -39,9 +39,9 @@ struct Args {
     #[arg(long)]
     name: Option<String>,
 
-    /// Do not advertise the server over mDNS.
+    /// Advertise the server over mDNS, so a phone can find it by name.
     #[arg(long)]
-    no_mdns: bool,
+    mdns: bool,
 }
 
 #[tokio::main]
@@ -98,9 +98,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("open http://{host}:{} to pick a room", args.port);
 
     // Held for the life of the process. Dropping it withdraws the service.
-    let _advertisement = match args.no_mdns {
-        true => None,
-        false => match discovery::advertise(args.port, args.name.as_deref()) {
+    let _advertisement = match args.mdns {
+        false => None,
+        true => match discovery::advertise(args.port, args.name.as_deref()) {
             Ok(advertisement) => {
                 tracing::info!("advertised on this network as {}", advertisement.fullname());
                 Some(advertisement)

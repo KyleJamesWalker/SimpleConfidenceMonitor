@@ -202,8 +202,8 @@ joins late stays silent.
 | `--bind` | `0.0.0.0` | Listening address. The default lets the stage display reach the server |
 | `--token` | none | Token required to open the console and to send commands. Also read from `SCM_TOKEN` |
 | `--state-dir` | none | Directory for room snapshots. Without it, state stays in memory |
-| `--name` | the port | Name to advertise on the local network |
-| `--no-mdns` | off | Stop advertising the server over mDNS |
+| `--mdns` | off | Advertise the server over mDNS |
+| `--name` | the port | Name to advertise, when `--mdns` is on |
 
 Started without `--token`, the server logs a warning and leaves the console
 open. Viewer routes never ask for the token, because a display machine cannot
@@ -218,11 +218,12 @@ running comes back paused at its saved elapsed time.
 
 ### Finding the server
 
-The server advertises itself over mDNS as `_scm._tcp.local.`, so a phone or a
-laptop on the same network can find it without anyone reading an IP address
-aloud. `--name "Main Stage"` sets the name a browser shows. `--no-mdns` turns
-the announcement off, and a network that blocks multicast logs a warning and
-carries on.
+With `--mdns`, the server advertises itself as `_scm._tcp.local.`, so a phone or
+a laptop on the same network can find it without anyone reading an IP address
+aloud. `--name "Main Stage"` sets the name a browser shows. It stays off by
+default, because a process that multicasts unasked surprises people and trips
+endpoint security on a managed laptop. A network that blocks multicast logs a
+warning and carries on serving.
 
 ```bash
 dns-sd -B _scm._tcp local        # macOS
