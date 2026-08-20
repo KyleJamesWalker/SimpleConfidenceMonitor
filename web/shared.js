@@ -71,12 +71,13 @@ export class RoomSocket {
     }
   }
 
-  // Median of three samples, each corrected for half the round trip.
   recordOffset(frame) {
-    const rtt = Date.now() - frame.client_time_ms;
-    this.offsets.push(frame.server_time_ms + rtt / 2 - Date.now());
-    const sorted = [...this.offsets].sort((a, b) => a - b);
-    this.offsetMs = sorted[Math.floor(sorted.length / 2)];
+    this.offsets.push({
+      sentMs: frame.client_time_ms,
+      receivedMs: Date.now(),
+      serverMs: frame.server_time_ms,
+    });
+    this.offsetMs = medianOffset(this.offsets);
   }
 
   serverNow() {
@@ -88,6 +89,21 @@ export class RoomSocket {
       this.socket.send(JSON.stringify(message));
     }
   }
+}
+
+// One estimate of how far the server clock sits ahead of this one. Half the
+// round trip is charged to each direction, which is the best a single sample
+// can do.
+export function offsetSample({ sentMs, receivedMs, serverMs }) {
+  const rtt = receivedMs - sentMs;
+  return serverMs + rtt / 2 - receivedMs;
+}
+
+// The median, so one stalled response cannot drag the clock.
+export function medianOffset(samples) {
+  if (!samples.length) return 0;
+  const sorted = samples.map(offsetSample).sort((a, b) => a - b);
+  return sorted[Math.floor((sorted.length - 1) / 2)];
 }
 
 export function elapsedMs(timer, serverNow) {

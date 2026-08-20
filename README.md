@@ -235,7 +235,13 @@ avahi-browse -r _scm._tcp        # Linux
 make test     # cargo test, then the JavaScript tests
 make lint     # clippy with warnings denied, and a format check
 make run      # debug build on port 8080
+make soak     # measure clock drift for ten seconds
 ```
+
+`make soak` reports how far a client's estimate of the server clock strays over
+a run, because the whole sync design rests on that estimate. On loopback it
+holds inside two milliseconds, which is a fraction of a display frame. Run it on
+the venue network before a show, since that is the number that matters.
 
 `web/` holds the frontend, compiled into the binary by `rust-embed`. The timer
 readout math lives twice: `src/timer.rs` renders the truth, and

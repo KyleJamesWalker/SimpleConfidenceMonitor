@@ -42,10 +42,12 @@ most, first.
       per room but not per screen.
 
 - [x] **Preset editing on the console.** `set_presets` changes the quick
- messages, but only over the API. The console shows them and cannot edit
- them.
+      messages, but only over the API. The console shows them and cannot edit
+      them.
 
 ## Verification
 
-- [ ] **Drift soak test.** Measure the residual clock offset over a long run,
-      which is the assumption the whole sync design rests on.
+- [x] **Drift soak test.** Measure the residual clock offset over a long run,
+      which is the assumption the whole sync design rests on. `make soak`
+      reports mean, spread and drift. Loopback holds inside two milliseconds.
+      The venue network is still the number that matters.

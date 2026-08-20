@@ -1,4 +1,4 @@
-.PHONY: test test-rust test-js run lint fmt build
+.PHONY: test test-rust test-js soak run lint fmt build
 
 test: test-rust test-js
 
@@ -7,6 +7,9 @@ test-rust:
 
 test-js:
 	node --test web/*.test.mjs
+
+soak:
+	cargo test --test drift -- --ignored --nocapture
 
 run:
 	cargo run -- --port 8080
