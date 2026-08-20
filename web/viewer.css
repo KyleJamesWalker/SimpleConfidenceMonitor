@@ -238,8 +238,9 @@ body {
 
 .soundHint {
   position: absolute;
-  bottom: 1.6vh;
-  right: 1vw;
+  top: 6vh;
+  left: 50%;
+  transform: translateX(-50%);
   border: 1px solid #2e2e34;
   border-radius: 999px;
   background: #17171b;

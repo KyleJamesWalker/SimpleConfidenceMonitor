@@ -18,6 +18,11 @@ the digits stay smooth and a display that loses the network keeps counting. Ther
 is no database, no Node toolchain and no internet dependency, which suits a
 laptop on a venue network.
 
+![The stage display, with the timer, the speaker, a note and a message](docs/images/viewer.png)
+
+The stage display. One large timer, the running cue and its speaker, the second
+timer beneath, and the operator's note in the lower right.
+
 What it carries:
 
 - Countdown, count-up and time-of-day timers, with amber and red warnings and
@@ -57,6 +62,16 @@ and shows a QR code for the stage display.
 | Stage display | `http://<host>:8080/keynote` | no |
 | Operator console | `http://<host>:8080/keynote/edit` | yes |
 | Agenda | `http://<host>:8080/keynote/agenda` | no |
+
+![The operator console, showing the timer, message, screen and rundown panels](docs/images/console.png)
+
+The console drives everything from one page: the transport and thresholds, quick
+messages, the screen toggles, the second timer, and the running order.
+
+![The agenda page, listing each cue with projected clock times](docs/images/agenda.png)
+
+The agenda is read-only, for backstage and for the speakers. Clock times follow
+the running cue, so an overrun moves every later cue with it.
 
 The console keys carry the hot path during a talk. `space` starts and pauses,
 `r` resets, `b` blacks out, `f` flashes, and `n` and `p` step the rundown.
