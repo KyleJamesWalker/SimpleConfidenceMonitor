@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Operator console</title>
+    <link rel="stylesheet" href="/assets/console.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <div class="room">
+        <strong id="roomName"></strong>
+        <a id="viewerLink" target="_blank" rel="noopener">open viewer</a>
+      </div>
+      <div class="conn">
+        <span id="clients" class="clients"></span>
+        <span id="status" class="status offline">offline</span>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="panel readout">
+        <div class="timer" id="timer">--:--</div>
+        <div class="meta"><span id="modeLabel"></span><span id="runLabel"></span></div>
+        <div class="transport">
+          <button id="start" class="primary">Start</button>
+          <button id="pause">Pause</button>
+          <button id="reset">Reset</button>
+        </div>
+        <div class="nudges">
+          <button data-adjust="-60000">-1m</button>
+          <button data-adjust="-30000">-30s</button>
+          <button data-adjust="30000">+30s</button>
+          <button data-adjust="60000">+1m</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Timer</h2>
+        <div class="chips" id="chips"></div>
+        <label class="field">
+          <span>Set duration (minutes, or mm:ss)</span>
+          <input id="duration" type="text" inputmode="numeric" placeholder="15:00" />
+        </label>
+        <label class="field">
+          <span>Mode</span>
+          <select id="mode">
+            <option value="countdown">Countdown</option>
+            <option value="count_up">Count up</option>
+            <option value="time_of_day">Time of day</option>
+          </select>
+        </label>
+        <div class="pair">
+          <label class="field">
+            <span>Amber at</span>
+            <input id="warn" type="text" inputmode="numeric" placeholder="3:00" />
+          </label>
+          <label class="field">
+            <span>Red at</span>
+            <input id="danger" type="text" inputmode="numeric" placeholder="1:00" />
+          </label>
+        </div>
+        <label class="field">
+          <span>Start at (clock time)</span>
+          <span class="armRow">
+            <input id="startAt" type="text" inputmode="numeric" placeholder="14:00" />
+            <button id="arm" type="button">Arm</button>
+            <button id="disarm" type="button">Clear</button>
+          </span>
+        </label>
+        <div class="armed" id="armed" hidden></div>
+        <label class="field">
+          <span>Past zero</span>
+          <select id="onExpire">
+            <option value="count_negative">Count into overtime</option>
+            <option value="hold_at_zero">Hold at zero</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="panel">
+        <h2>Message to speaker <button id="editPresets" class="linkish" type="button">edit presets</button></h2>
+        <div class="presets" id="presets"></div>
+        <div class="presetEditor" id="presetEditor" hidden>
+          <div id="presetRows"></div>
+          <div class="transport">
+            <button id="addPreset" type="button">Add</button>
+            <button id="savePresets" class="primary" type="button">Save</button>
+            <button id="cancelPresets" type="button">Cancel</button>
+          </div>
+        </div>
+        <textarea id="message" rows="2" placeholder="Wrap up"></textarea>
+        <div class="tones">
+          <button data-tone="neutral" class="tone">Neutral</button>
+          <button data-tone="warn" class="tone">Warn</button>
+          <button data-tone="alert" class="tone">Alert</button>
+        </div>
+        <div class="transport">
+          <button id="showMessage" class="primary">Show</button>
+          <button id="hideMessage">Hide</button>
+          <button id="flash">Flash</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Screen</h2>
+        <label class="field">
+          <span>Title</span>
+          <input id="title" type="text" placeholder="Keynote" />
+        </label>
+        <label class="field">
+          <span>Next up</span>
+          <input id="nextUp" type="text" placeholder="Panel: Q&amp;A" />
+        </label>
+        <div class="toggles">
+          <button id="blackout" data-toggle>Blackout</button>
+          <button id="showClock" data-toggle>Clock</button>
+          <button id="clock24h" data-toggle>24 hour</button>
+          <button id="showProgress" data-toggle>Progress</button>
+          <button id="mirror" data-toggle>Mirror</button>
+          <button id="chime" data-toggle>Chime</button>
+          <button id="showSpeaker" data-toggle>Speaker</button>
+          <button id="showNotes" data-toggle>Notes</button>
+        </div>
+        <label class="field">
+          <span>Text size <output id="scaleOut">100%</output></span>
+          <input id="scale" type="range" min="50" max="200" step="5" value="100" />
+        </label>
+      </section>
+
+      <section class="panel">
+        <h2>Aux timer</h2>
+        <div class="auxRow">
+          <span class="auxReadout" id="auxReadout">--:--</span>
+          <button id="auxVisible" data-toggle>Show</button>
+        </div>
+        <label class="field">
+          <span>Label</span>
+          <input id="auxLabel" type="text" placeholder="Break" />
+        </label>
+        <div class="chips" id="auxChips"></div>
+        <div class="transport">
+          <button id="auxStart" class="primary">Start</button>
+          <button id="auxPause">Pause</button>
+          <button id="auxReset">Reset</button>
+        </div>
+      </section>
+
+      <section class="panel rundown">
+        <h2>Rundown <span id="totals" class="totals"></span></h2>
+        <ol class="cues" id="cues"></ol>
+        <form class="cueForm" id="cueForm">
+          <input id="cueTitle" type="text" placeholder="Cue title" autocomplete="off" />
+          <input id="cueSpeaker" type="text" placeholder="Speaker" autocomplete="off" />
+          <input id="cueMinutes" type="text" inputmode="numeric" placeholder="5:00" />
+          <button type="submit">Add cue</button>
+        </form>
+        <div class="io">
+          <a id="exportCsv" download>Export CSV</a>
+          <a id="exportJson" download>Export JSON</a>
+          <label class="importLabel">
+            Import
+            <input id="importFile" type="file" accept=".csv,.json,text/csv,application/json" />
+          </label>
+        </div>
+        <div class="transport">
+          <button id="prevCue">Previous</button>
+          <button id="nextCue">Next cue</button>
+          <button id="nextAndStart" class="primary">Next &amp; go</button>
+        </div>
+        <div class="toggles">
+          <button id="autoAdvance" data-toggle>Auto advance</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Room</h2>
+        <p class="hint">
+          Clearing returns the timer, the message, the screen, the rundown and
+          the presets to their defaults.
+        </p>
+        <button id="clearRoom" class="danger">Clear this room</button>
+      </section>
+
+      <section class="panel keys">
+        <h2>Keys</h2>
+        <ul>
+          <li><kbd>space</kbd> start or pause</li>
+          <li><kbd>r</kbd> reset</li>
+          <li><kbd>b</kbd> blackout</li>
+          <li><kbd>f</kbd> flash</li>
+          <li><kbd>enter</kbd> send the message (in the message box)</li>
+          <li><kbd>g</kbd> next cue and go</li>
+          <li><kbd>n</kbd> next cue, <kbd>p</kbd> previous cue</li>
+        </ul>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" hidden></div>
+    <script type="module" src="/assets/console.js"></script>
+  </body>
+</html>

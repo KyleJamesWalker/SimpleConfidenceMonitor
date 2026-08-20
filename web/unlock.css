@@ -1,0 +1,25 @@
+.unlock {
+  max-width: 28rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.unlock .panel {
+  gap: 0.9rem;
+}
+
+.unlock .hint {
+  margin: 0;
+  color: var(--dim);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.unlock #failed {
+  color: #ff9a9a;
+}
+
+.stack {
+  display: grid;
+  gap: 0.75rem;
+}

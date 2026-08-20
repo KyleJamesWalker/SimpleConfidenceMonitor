@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SimpleConfidenceMonitor</title>
+    <link rel="stylesheet" href="/assets/console.css" />
+    <link rel="stylesheet" href="/assets/picker.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <div class="room"><strong>SimpleConfidenceMonitor</strong></div>
+      <div class="conn"><span class="clients" id="host"></span></div>
+    </header>
+
+    <main class="grid">
+      <section class="panel">
+        <h2>Open a room</h2>
+        <form id="form" class="stack">
+          <label class="field">
+            <span>Room name</span>
+            <input id="room" name="room" type="text" placeholder="keynote" autocomplete="off" autofocus />
+          </label>
+          <label class="field">
+            <span>Operator token (only if the server was started with one)</span>
+            <input id="token" name="token" type="password" autocomplete="off" />
+          </label>
+          <div class="transport">
+            <button id="openConsole" class="primary" type="submit">Open console</button>
+            <button id="openViewer" type="button">Open viewer</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel" id="linksPanel" hidden>
+        <h2>Point the stage display here</h2>
+        <div class="qrRow">
+          <img id="qr" alt="QR code for the viewer URL" width="200" height="200" />
+          <div class="stack">
+            <label class="field">
+              <span>Viewer</span>
+              <input id="viewerUrl" type="text" readonly />
+            </label>
+            <label class="field">
+              <span>Console</span>
+              <input id="consoleUrl" type="text" readonly />
+            </label>
+            <p class="hint">
+              The viewer needs no token. Keep the console link to yourself.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Live rooms</h2>
+        <ul class="rooms" id="rooms">
+          <li class="hint">none yet</li>
+        </ul>
+      </section>
+    </main>
+    <script type="module" src="/assets/picker.js"></script>
+  </body>
+</html>

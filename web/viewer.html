@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Confidence Monitor</title>
+    <link rel="stylesheet" href="/assets/viewer.css" />
+  </head>
+  <body>
+    <div class="stage" id="stage">
+      <header class="row top">
+        <div class="titleGroup">
+          <span class="title" id="title"></span>
+          <span class="speaker" id="speaker"></span>
+        </div>
+        <div class="clock" id="clock"></div>
+      </header>
+
+      <main class="middle">
+        <div class="timer" id="timer">--:--</div>
+        <div class="aux" id="aux" hidden>
+          <span class="auxLabel" id="auxLabel"></span>
+          <span class="auxTime" id="auxTime"></span>
+        </div>
+      </main>
+
+      <footer class="row bottom">
+        <div class="lowerLeft">
+          <div class="next" id="next"></div>
+          <div class="notes" id="notes"></div>
+        </div>
+        <div class="armed" id="armed" hidden></div>
+        <div class="message" id="message"></div>
+      </footer>
+
+      <div class="progress" id="progress"><div class="bar" id="bar"></div></div>
+      <div class="status" id="status" hidden>reconnecting</div>
+      <button class="soundHint" id="soundHint" hidden>tap to enable sound</button>
+      <button class="fullscreen" id="fullscreen" title="Fullscreen">⛶</button>
+      <div class="flash" id="flash"></div>
+      <div class="blackout" id="blackoutLayer"></div>
+    </div>
+    <script type="module" src="/assets/viewer.js"></script>
+  </body>
+</html>

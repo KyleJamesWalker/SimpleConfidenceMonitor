@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agenda</title>
+    <link rel="stylesheet" href="/assets/agenda.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <div class="room">
+        <strong id="roomName"></strong>
+        <span id="status" class="status">offline</span>
+      </div>
+      <div class="now">
+        <span id="clock" class="clock"></span>
+        <span id="left" class="left"></span>
+      </div>
+    </header>
+
+    <main>
+      <section class="current" id="current" hidden>
+        <div class="label">On now</div>
+        <div class="row">
+          <h1 id="currentTitle"></h1>
+          <div class="timer" id="timer">--:--</div>
+        </div>
+        <div class="who" id="currentSpeaker"></div>
+      </section>
+
+      <div class="scroller">
+        <table class="agenda">
+        <thead>
+          <tr>
+            <th class="num">#</th>
+            <th>Cue</th>
+            <th class="time">Start</th>
+            <th class="time">End</th>
+            <th class="time">Length</th>
+          </tr>
+        </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+
+      <p class="empty" id="empty">This room has no rundown yet.</p>
+    </main>
+    <script type="module" src="/assets/agenda.js"></script>
+  </body>
+</html>

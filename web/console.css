@@ -1,0 +1,604 @@
+:root {
+  --bg: #0d0d10;
+  --panel: #16161b;
+  --line: #26262e;
+  --fg: #f4f4f5;
+  --dim: #9a9aa4;
+  --accent: #4c8dff;
+  --warn: #ffcc33;
+  --danger: #ff4d4d;
+  --ok: #38d39f;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 2;
+}
+
+.room {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.room strong {
+  font-size: 1.05rem;
+}
+
+a {
+  color: var(--accent);
+  font-size: 0.85rem;
+}
+
+.conn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  white-space: nowrap;
+}
+
+.clients {
+  color: var(--dim);
+  font-size: 0.8rem;
+}
+
+.status {
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+}
+
+.status.online {
+  background: #10301f;
+  color: var(--ok);
+}
+
+.status.offline,
+.status.connecting {
+  background: #351515;
+  color: #ff9a9a;
+}
+
+/* Column flow rather than a grid, so a short panel does not hold open a row
+   the height of the tallest panel beside it. */
+.grid {
+  columns: 21rem;
+  column-gap: 1rem;
+  padding: 1rem;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  margin: 0 0 1rem;
+  display: grid;
+  gap: 0.7rem;
+  break-inside: avoid;
+}
+
+h2 {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+  font-weight: 600;
+}
+
+.readout {
+  text-align: center;
+}
+
+.timer {
+  font-size: clamp(2.6rem, 9vw, 4.4rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.timer.warn {
+  color: var(--warn);
+}
+
+.timer.danger,
+.timer.expired {
+  color: var(--danger);
+}
+
+.meta {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--dim);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Explicit columns, or the fourth nudge wraps onto a line of its own. */
+.transport {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.nudges {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(3.2rem, 1fr));
+  gap: 0.5rem;
+}
+
+button {
+  font: inherit;
+  padding: 0.7rem 0.9rem;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: #1f1f27;
+  color: var(--fg);
+  cursor: pointer;
+  min-height: 44px;
+}
+
+button:hover {
+  border-color: #3a3a46;
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #06122b;
+  font-weight: 600;
+}
+
+/* Blue means "this does something". Teal means "this is on". A toggle and a
+   primary action must never look the same. */
+[data-toggle].on {
+  background: #0f3b2c;
+  border-color: var(--ok);
+  color: var(--ok);
+  font-weight: 600;
+}
+
+[data-toggle].on::before {
+  content: '\2713\00a0';
+}
+
+#blackout.on {
+  background: #3a1111;
+  border-color: var(--danger);
+  color: #ff9a9a;
+}
+
+[data-tone].on {
+  font-weight: 600;
+}
+
+[data-tone].on::before {
+  content: '\2713\00a0';
+}
+
+[data-tone='neutral'].on {
+  background: #2b2b34;
+  border-color: #4a4a58;
+  color: var(--fg);
+}
+
+[data-tone='warn'].on {
+  background: var(--warn);
+  border-color: var(--warn);
+  color: #1a1400;
+}
+
+[data-tone='alert'].on {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #2a0000;
+}
+
+/* A live message stays a primary action, and gains a ring to say it is showing. */
+#showMessage.on {
+  box-shadow: 0 0 0 2px var(--ok);
+}
+
+#showMessage.on::after {
+  content: '\00a0\2713';
+}
+
+.field {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.field span {
+  font-size: 0.8rem;
+  color: var(--dim);
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  padding: 0.6rem 0.7rem;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: #101015;
+  color: var(--fg);
+  width: 100%;
+  min-height: 44px;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.25rem;
+  transform: translateX(-50%);
+  background: #351515;
+  color: #ffbdbd;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.tones {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.toggles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6.4rem, 1fr));
+  gap: 0.5rem;
+}
+
+.toggles button {
+  font-size: 0.9rem;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 3.2rem;
+  font-size: 1.05rem;
+}
+
+input[type='range'] {
+  padding: 0;
+  min-height: 2rem;
+  accent-color: var(--accent);
+}
+
+output {
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.keys ul {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+  color: var(--dim);
+  font-size: 0.85rem;
+}
+
+kbd {
+  background: #22222b;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0.05rem 0.4rem;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.8rem;
+  color: var(--fg);
+}
+
+.rundown {
+  column-span: all;
+}
+
+.totals {
+  float: right;
+  text-transform: none;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.cues {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.cues li {
+  display: grid;
+  grid-template-columns: 1.6rem 1fr auto auto;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #101015;
+}
+
+.cues li.active {
+  border-color: var(--accent);
+  background: #14203a;
+}
+
+.cues .index {
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+
+.cues .who {
+  color: var(--dim);
+  font-size: 0.85rem;
+}
+
+.cues .len {
+  font-variant-numeric: tabular-nums;
+  color: var(--dim);
+}
+
+.cues .actions {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.cues .actions button {
+  min-height: 32px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.cueForm {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 0.8fr auto;
+  gap: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .cueForm {
+    grid-template-columns: 1fr;
+  }
+}
+
+.presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 0.4rem;
+}
+
+.preset {
+  min-height: 40px;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.9rem;
+  border-left: 3px solid var(--line);
+}
+
+.preset.tone-warn {
+  border-left-color: var(--warn);
+}
+
+.preset.tone-alert {
+  border-left-color: var(--danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+ button:active {
+ transform: none;
+ }
+}
+
+.io {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.importLabel {
+  color: var(--dim);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.importLabel input {
+  width: auto;
+  min-height: 0;
+  padding: 0.2rem;
+  font-size: 0.8rem;
+  color: var(--dim);
+}
+
+.armRow {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.armRow input {
+  flex: 1 1 auto;
+}
+
+.armRow button {
+  flex: 0 0 auto;
+}
+
+.armed {
+  color: var(--warn);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.armed[hidden] {
+  display: none;
+}
+
+.auxRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.auxReadout {
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.auxReadout.warn {
+  color: var(--warn);
+}
+
+.auxReadout.danger,
+.auxReadout.expired {
+  color: var(--danger);
+}
+
+.auxRow button {
+  flex: 0 0 auto;
+}
+
+button.danger {
+  border-color: #5a2020;
+  color: #ff9a9a;
+}
+
+button.danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.linkish {
+  float: right;
+  padding: 0.05rem 0.4rem;
+  min-height: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border-color: transparent;
+  background: transparent;
+}
+
+.linkish:hover {
+  border-color: var(--line);
+}
+
+.linkish.on {
+  color: var(--ok);
+}
+
+.presetEditor {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.presetEditor[hidden],
+.presets[hidden] {
+  display: none;
+}
+
+.presetRow {
+  display: grid;
+  grid-template-columns: 1fr 6.5rem 2rem;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.presetRow select {
+  min-height: 40px;
+  padding: 0.3rem;
+  font-size: 0.85rem;
+}
+
+.presetRow input {
+  min-height: 40px;
+}
+
+.removePreset {
+  min-height: 40px;
+  padding: 0;
+  color: #ff9a9a;
+  border-color: #3a1c1c;
+}
+
+.removePreset:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.cueEdit {
+  display: grid;
+  grid-template-columns: 2fr 1.4fr 0.8fr 2fr;
+  gap: 0.5rem;
+  align-items: end;
+  width: 100%;
+}
+
+.cueEdit .transport {
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.cues li:has(.cueEdit) {
+  grid-template-columns: 1fr;
+  border-color: var(--accent);
+}
+
+@media (max-width: 720px) {
+  .cueEdit {
+    grid-template-columns: 1fr;
+  }
+}

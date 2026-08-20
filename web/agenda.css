@@ -1,0 +1,192 @@
+:root {
+  --bg: #0d0d10;
+  --panel: #16161b;
+  --line: #26262e;
+  --fg: #f4f4f5;
+  --dim: #9a9aa4;
+  --accent: #4c8dff;
+  --warn: #ffcc33;
+  --danger: #ff4d4d;
+  --ok: #38d39f;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+}
+
+.room {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.status {
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #351515;
+  color: #ff9a9a;
+}
+
+.status.online {
+  background: #10301f;
+  color: var(--ok);
+}
+
+.now {
+  display: flex;
+  gap: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.left {
+  color: var(--dim);
+}
+
+main {
+  padding: 1rem;
+  max-width: 60rem;
+  margin: 0 auto;
+}
+
+.current {
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.current .label {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.current .row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.current h1 {
+  font-size: 1.5rem;
+}
+
+.current .timer {
+  font-size: 2.2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.current .timer.warn {
+  color: var(--warn);
+}
+
+.current .timer.danger,
+.current .timer.expired {
+  color: var(--danger);
+}
+
+.current .who {
+  color: var(--dim);
+  font-size: 0.9rem;
+}
+
+.scroller {
+  overflow-x: auto;
+}
+
+.agenda {
+  width: 100%;
+  min-width: 24rem;
+  border-collapse: collapse;
+}
+
+.agenda th {
+  text-align: left;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+  font-weight: 600;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.agenda td {
+  padding: 0.55rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: baseline;
+}
+
+.agenda .num,
+.agenda .time {
+  width: 1%;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.agenda .num {
+  color: var(--dim);
+}
+
+.agenda tr.done {
+  color: var(--dim);
+}
+
+.agenda tr.done .title {
+  text-decoration: line-through;
+}
+
+.agenda tr.active {
+  background: #14203a;
+}
+
+.agenda tr.active .title {
+  font-weight: 700;
+}
+
+.title .who {
+  color: var(--dim);
+  font-size: 0.85rem;
+}
+
+.empty {
+  color: var(--dim);
+  padding: 1rem 0.5rem;
+}
+
+.empty[hidden],
+.current[hidden] {
+  display: none;
+}

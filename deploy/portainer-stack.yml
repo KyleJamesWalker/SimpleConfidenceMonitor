@@ -1,0 +1,21 @@
+services:
+  confidence-monitor:
+    image: ghcr.io/kylejameswalker/simpleconfidencemonitor:${SCM_TAG:-pr-1}
+    container_name: confidence-monitor
+    restart: unless-stopped
+    ports:
+      - "${SCM_HOST_PORT:-8080}:8080"
+    environment:
+      SCM_TOKEN: ${SCM_TOKEN:?set SCM_TOKEN to gate the operator console}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - scm-state:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  scm-state:

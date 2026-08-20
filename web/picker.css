@@ -1,0 +1,66 @@
+.stack {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.qrRow {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+#qr {
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px;
+}
+
+.qrRow .stack {
+  flex: 1 1 16rem;
+}
+
+.hint {
+  margin: 0;
+  color: var(--dim);
+  font-size: 0.85rem;
+}
+
+.rooms {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.rooms li {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0.4rem;
+}
+
+.rooms .name {
+  font-weight: 600;
+}
+
+.rooms a {
+  font-size: 0.85rem;
+}
+
+.removeRoom {
+  padding: 0.1rem 0.45rem;
+  min-height: 0;
+  font-size: 0.8rem;
+  color: #ff9a9a;
+  border-color: #3a1c1c;
+  background: transparent;
+}
+
+.removeRoom:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
