@@ -21,7 +21,7 @@ most, first.
       press.
 - [x] **Auxiliary timer.** A second independent countdown, for a break or a
       hard stop, shown alongside the main timer.
-- [ ] **GET command endpoint.** `GET /api/rooms/<room>/cmd?cmd=start` for
+- [x] **GET command endpoint.** `GET /api/rooms/<room>/cmd?cmd=start` for
       hardware controllers that can only issue a GET.
 - [ ] **Clear a room.** An endpoint and a console control to reset a room to its
       defaults, including its snapshot.

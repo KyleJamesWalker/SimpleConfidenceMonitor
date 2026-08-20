@@ -432,3 +432,97 @@ async fn a_guarded_server_keeps_the_export_open() {
         .unwrap();
     assert_eq!(response.status(), 200);
 }
+
+async fn get_cmd(addr: SocketAddr, query: &str) -> reqwest::Response {
+    client()
+        .get(format!("http://{addr}/api/rooms/keynote/cmd?{query}"))
+        .send()
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn a_command_arrives_over_get() {
+    let addr = open_server().await;
+    let response = get_cmd(addr, "cmd=start").await;
+    assert_eq!(response.status(), 200);
+    let body: serde_json::Value = response.json().await.unwrap();
+    assert_eq!(body["timer"]["run"]["state"], "running");
+    assert_eq!(body["rev"], 1);
+}
+
+#[tokio::test]
+async fn a_get_command_reads_a_number_field() {
+    let addr = open_server().await;
+    let body: serde_json::Value = get_cmd(addr, "cmd=set_duration&ms=300000")
+        .await
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(body["timer"]["duration_ms"], 300_000);
+}
+
+#[tokio::test]
+async fn a_get_command_reads_a_negative_number() {
+    let addr = open_server().await;
+    get_cmd(addr, "cmd=set_duration&ms=300000").await;
+    let body: serde_json::Value = get_cmd(addr, "cmd=adjust&ms=-60000")
+        .await
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(body["timer"]["duration_ms"], 240_000);
+}
+
+#[tokio::test]
+async fn a_get_command_reads_a_boolean_field() {
+    let addr = open_server().await;
+    let body: serde_json::Value = get_cmd(addr, "cmd=blackout&on=true")
+        .await
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(body["display"]["blackout"], true);
+}
+
+#[tokio::test]
+async fn a_get_command_keeps_a_numeric_message_as_text() {
+    let addr = open_server().await;
+    let body: serde_json::Value = get_cmd(addr, "cmd=message&text=5&visible=true")
+        .await
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(body["message"]["text"], "5");
+    assert_eq!(body["message"]["visible"], true);
+}
+
+#[tokio::test]
+async fn a_get_command_reads_an_enum_field() {
+    let addr = open_server().await;
+    let body: serde_json::Value = get_cmd(addr, "cmd=set_mode&mode=count_up")
+        .await
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(body["timer"]["mode"], "count_up");
+}
+
+#[tokio::test]
+async fn a_get_command_without_a_name_is_refused() {
+    let addr = open_server().await;
+    assert_eq!(get_cmd(addr, "ms=1000").await.status(), 400);
+}
+
+#[tokio::test]
+async fn an_unknown_get_command_is_refused() {
+    let addr = open_server().await;
+    assert_eq!(get_cmd(addr, "cmd=explode").await.status(), 400);
+}
+
+#[tokio::test]
+async fn a_guarded_server_gates_a_get_command() {
+    let addr = guarded_server().await;
+    assert_eq!(get_cmd(addr, "cmd=start").await.status(), 401);
+    assert_eq!(get_cmd(addr, "cmd=start&token=s3cret").await.status(), 200);
+}

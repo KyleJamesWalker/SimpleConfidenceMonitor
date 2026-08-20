@@ -63,6 +63,13 @@ curl -X POST http://localhost:8080/api/rooms/keynote/cmd \
   -d '{"cmd": "set_duration", "ms": 900000}'
 ```
 
+A controller that can only issue a GET reaches the same commands through query
+parameters:
+
+```bash
+curl 'http://localhost:8080/api/rooms/keynote/cmd?cmd=adjust&ms=-30000&token=<token>'
+```
+
 ### Commands
 
 Each command is a JSON object with a `cmd` field. The reply is the new room
@@ -102,6 +109,7 @@ state, so a caller can confirm the `rev` moved.
 | `GET` | `/api/rooms/<room>/ws?role=view\|edit` | The live socket |
 | `GET` | `/api/rooms/<room>/rundown.csv` | The running order as CSV |
 | `GET` | `/api/rooms/<room>/rundown.json` | The running order as JSON |
+| `GET` | `/api/rooms/<room>/cmd?cmd=<name>` | Runs one command from query parameters |
 | `POST` | `/api/rooms/<room>/rundown` | Replaces the running order from CSV or JSON |
 | `GET` | `/api/qr?text=<url>` | An SVG QR code |
 | `GET` | `/healthz` | `ok` |

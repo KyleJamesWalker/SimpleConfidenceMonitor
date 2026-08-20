@@ -54,7 +54,10 @@ pub fn router(state: AppState) -> Router {
         .route("/api/qr", get(qr))
         .route("/api/rooms", get(room_list))
         .route("/api/rooms/{room}", get(room_state))
-        .route("/api/rooms/{room}/cmd", post(command))
+        .route(
+            "/api/rooms/{room}/cmd",
+            post(command).get(command_from_query),
+        )
         .route("/api/rooms/{room}/rundown", post(import_rundown))
         .route("/api/rooms/{room}/rundown.csv", get(export_csv))
         .route("/api/rooms/{room}/rundown.json", get(export_json))
@@ -147,6 +150,62 @@ async fn command(
     let room = state.hub.get_or_create(&name);
     room.apply(&command, crate::clock::now_ms());
     json(room.frame())
+}
+
+/// Fields that stay text even when the value looks like a number or a boolean.
+const TEXT_FIELDS: [&str; 7] = ["cmd", "text", "tone", "title", "next_up", "label", "mode"];
+
+/// A command from query parameters, for a controller that can only issue a GET.
+async fn command_from_query(
+    State(state): State<AppState>,
+    Path(room): Path<String>,
+    Query(params): Query<HashMap<String, String>>,
+    headers: HeaderMap,
+) -> Response {
+    let name = match room_of(&state, &room) {
+        Ok(name) => name,
+        Err(response) => return *response,
+    };
+    if state
+        .auth
+        .check(&headers, params.get("token").map(String::as_str))
+        == Outcome::Denied
+    {
+        return denied();
+    }
+    if !params.contains_key("cmd") {
+        return (StatusCode::BAD_REQUEST, "cmd is required").into_response();
+    }
+
+    let mut object = serde_json::Map::new();
+    for (key, value) in &params {
+        if key == "token" {
+            continue;
+        }
+        object.insert(key.clone(), query_value(key, value));
+    }
+    let command: Command = match serde_json::from_value(serde_json::Value::Object(object)) {
+        Ok(command) => command,
+        Err(err) => return (StatusCode::BAD_REQUEST, err.to_string()).into_response(),
+    };
+
+    let room = state.hub.get_or_create(&name);
+    room.apply(&command, crate::clock::now_ms());
+    json(room.frame())
+}
+
+fn query_value(key: &str, value: &str) -> serde_json::Value {
+    if TEXT_FIELDS.contains(&key) {
+        return serde_json::Value::String(value.to_string());
+    }
+    if let Ok(number) = value.parse::<i64>() {
+        return serde_json::Value::from(number);
+    }
+    match value {
+        "true" => serde_json::Value::Bool(true),
+        "false" => serde_json::Value::Bool(false),
+        _ => serde_json::Value::String(value.to_string()),
+    }
 }
 
 async fn export_csv(State(state): State<AppState>, Path(room): Path<String>) -> Response {
