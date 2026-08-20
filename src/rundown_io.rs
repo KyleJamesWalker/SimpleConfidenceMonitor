@@ -33,7 +33,7 @@ const HEADER: &str = "title,speaker,duration,notes";
 /// Reads a running order. A header row names the columns, and its absence
 /// means the default order.
 pub fn parse_csv(body: &str) -> Result<Vec<CueDraft>, String> {
-    let mut rows = split_rows(body);
+    let mut rows = split_rows(body)?;
     rows.retain(|(_, fields)| fields.iter().any(|field| !field.trim().is_empty()));
     if rows.is_empty() {
         return Err("the document holds no rows".to_string());
@@ -139,13 +139,14 @@ fn column_name(raw: &str) -> &'static str {
 /// A quoted field may hold a newline, which is how a note with two lines
 /// survives a round trip through a spreadsheet. Each row carries the line it
 /// starts on, so an error points at the right place in a text editor.
-fn split_rows(body: &str) -> Vec<(usize, Vec<String>)> {
+fn split_rows(body: &str) -> Result<Vec<(usize, Vec<String>)>, String> {
     let mut rows = Vec::new();
     let mut fields = Vec::new();
     let mut field = String::new();
     let mut quoted = false;
     let mut line = 1;
     let mut row_line = 1;
+    let mut quote_line = 1;
     let mut chars = body.chars().peekable();
 
     while let Some(c) = chars.next() {
@@ -154,7 +155,12 @@ fn split_rows(body: &str) -> Vec<(usize, Vec<String>)> {
                 field.push('"');
                 chars.next();
             }
-            '"' => quoted = !quoted,
+            '"' => {
+                quoted = !quoted;
+                if quoted {
+                    quote_line = line;
+                }
+            }
             ',' if !quoted => fields.push(std::mem::take(&mut field)),
             '\r' if !quoted && chars.peek() == Some(&'\n') => {}
             '\n' if !quoted => {
@@ -172,9 +178,13 @@ fn split_rows(body: &str) -> Vec<(usize, Vec<String>)> {
         }
     }
 
+    // A quote left open would otherwise swallow every row after it.
+    if quoted {
+        return Err(format!("line {quote_line}: a quote is never closed"));
+    }
     if !field.is_empty() || !fields.is_empty() {
         fields.push(field);
         rows.push((row_line, fields));
     }
-    rows
+    Ok(rows)
 }

@@ -263,3 +263,24 @@ fn a_line_number_in_an_error_points_at_the_row_start() {
     let error = parse_csv(csv).unwrap_err();
     assert!(error.contains("line 4"), "got {error}");
 }
+
+#[test]
+fn refuses_a_document_with_an_unclosed_quote() {
+    // One stray quote must not swallow every row after it.
+    let csv = "title,duration\nPanel\",20\nBreak,10\nClosing,15\n";
+    let error = parse_csv(csv).unwrap_err();
+    assert!(error.contains("quote"), "got {error}");
+    assert!(error.contains("line 2"), "got {error}");
+}
+
+#[test]
+fn refuses_a_quote_left_open_at_the_end() {
+    let error = parse_csv("title,duration\n\"Panel,20\n").unwrap_err();
+    assert!(error.contains("quote"), "got {error}");
+}
+
+#[test]
+fn a_closed_quote_at_the_end_of_a_document_is_fine() {
+    let cues = parse_csv("title,notes\nPanel,\"two mics\"\n").unwrap();
+    assert_eq!(cues[0].notes, "two mics");
+}
