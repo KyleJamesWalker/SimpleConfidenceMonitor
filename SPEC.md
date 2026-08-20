@@ -13,8 +13,8 @@ string appears in the URL, and the server creates one on first request. The
 build has no Node toolchain and no runtime dependencies: `cargo build --release`
 produces a self-contained binary with the frontend embedded.
 
-Version 1 covers one active timer per room. A rundown or cue list is a later
-milestone, and the wire format leaves room for it.
+Version 1 covers one active timer per room, plus the rundown that M6 added on
+top of the same wire format.
 
 ## Background
 
@@ -54,12 +54,14 @@ a room name.
 | Route | Purpose |
 |---|---|
 | `GET /` | Room picker. Enter a name, get the two links and a QR code for the viewer |
+| `GET /api/rooms` | The names of the live rooms |
 | `GET /<room>` | Viewer. The confidence monitor itself |
 | `GET /<room>/edit` | Operator console. Requires the admin token |
 | `GET /api/rooms/<room>` | Room state as JSON |
 | `POST /api/rooms/<room>/cmd` | Apply one command. Requires the admin token |
 | `GET /api/rooms/<room>/ws` | WebSocket. `?role=view` or `?role=edit` |
 | `GET /healthz` | Liveness |
+| `GET /api/qr?text=` | An SVG QR code, used by the picker |
 | `GET /assets/*` | Embedded CSS, JavaScript, and fonts |
 
 The server reserves `api`, `assets`, and `healthz`, and rejects them as room
@@ -92,7 +94,6 @@ struct Message {
     text: String,                 // operator note to the speaker
     tone: Tone,                   // Neutral | Warn | Alert
     visible: bool,
-    flash: bool,
 }
 
 struct Display {
@@ -104,8 +105,20 @@ struct Display {
     blackout: bool,
     mirror: bool,                 // horizontal flip for teleprompter glass
     scale: u8,                    // 50 to 200 percent
+    flash_at: u64,                // a viewer flashes when this value changes
+}
+
+struct Rundown {
+    cues: Vec<Cue>,               // id, title, speaker, duration_ms, notes
+    active: Option<u64>,          // id of the loaded cue
+    auto_advance: bool,
+    next_id: u64,                 // ids are never reused
 }
 ```
+
+Flash is an event rather than a flag. A boolean cannot express a second flash
+while the first is still on screen. The command stamps `flash_at` with the
+server clock, and a viewer compares it against the value it last saw.
 
 Timer readout is a pure function of `(Timer, now)`. No task ticks the clock, so
 the server holds no timing loop and the state machine tests without sleeping.
@@ -144,6 +157,10 @@ every operator action with `curl`.
 { "cmd": "flash" }
 { "cmd": "blackout", "on": true }
 { "cmd": "display", "title": "Keynote", "next_up": "Panel: Q&A" }
+{ "cmd": "add_cue", "title": "Keynote", "duration_ms": 1800000 }
+{ "cmd": "load_cue", "id": 2 }
+{ "cmd": "next_cue" }
+{ "cmd": "set_auto_advance", "on": true }
 ```
 
 An unknown `cmd` returns `400` and leaves state untouched. The server replies
@@ -275,7 +292,21 @@ Milestones, each ending on a working binary.
 5. **M5 Operations.** Token auth, snapshot persistence, HTTP command API, room
    picker with QR code, and the README.
 6. **M6 Rundown.** Cue list, next and previous, auto-advance, and running total
-   against schedule. Out of scope for version 1.
+   against schedule.
+
+All six shipped. Three decisions changed along the way.
+
+Flash became an event rather than a boolean, for the reason above.
+
+Auto-advance needs something to notice zero, and nothing else in the server
+does. A 200 millisecond scan covers that one case. It reads only rooms with
+auto-advance on and a running countdown, and the readout stays a pure function
+of the timer and a timestamp.
+
+The frontend carries its own test suite. The readout math lives twice, in Rust
+and in JavaScript, so `web/shared.test.mjs` asserts the same cases as
+`tests/timer.rs`. The node test runner ships with node, so this adds no
+dependency and no build step.
 
 Rollback is `git revert` and rebuild. The binary holds no external state beyond
 an optional snapshot directory, and a stale snapshot deletes safely.
