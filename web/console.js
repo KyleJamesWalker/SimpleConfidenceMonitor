@@ -17,6 +17,12 @@ el('roomName').textContent = room;
 el('viewerLink').href = `/${room}`;
 
 const QUICK_MINUTES = [5, 10, 15, 20, 30];
+const TONES = ['neutral', 'warn', 'alert'];
+const MAX_PRESETS = 8;
+
+// The editor holds its own copy while open, so an arriving frame cannot
+// overwrite half typed text.
+let editingPresets = false;
 const TOGGLES = {
   blackout: (on) => ({ cmd: 'blackout', on }),
   showClock: (on) => ({ cmd: 'display', show_clock: on }),
@@ -124,6 +130,7 @@ function drawArmed(frame) {
 
 function drawPresets(frame) {
   const row = el('presets');
+  if (editingPresets) return;
   const signature = frame.presets.map((preset) => `${preset.tone}:${preset.text}`).join('|');
   if (row.dataset.signature === signature) return;
   row.dataset.signature = signature;
@@ -312,6 +319,82 @@ el('importFile').addEventListener('change', async (event) => {
     toast(`Import failed: ${error.message}`);
   }
   event.target.value = '';
+});
+
+function presetRow(preset) {
+  const row = document.createElement('div');
+  row.className = 'presetRow';
+
+  const text = document.createElement('input');
+  text.type = 'text';
+  text.className = 'presetText';
+  text.value = preset.text;
+  text.placeholder = 'Message';
+
+  const tone = document.createElement('select');
+  tone.className = 'presetTone';
+  for (const name of TONES) {
+    const option = document.createElement('option');
+    option.value = name;
+    option.textContent = name;
+    tone.append(option);
+  }
+  tone.value = preset.tone;
+
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'removePreset';
+  remove.textContent = '\u00d7';
+  remove.title = 'Remove';
+  remove.addEventListener('click', () => row.remove());
+
+  row.append(text, tone, remove);
+  return row;
+}
+
+function openPresetEditor() {
+  editingPresets = true;
+  el('presetRows').replaceChildren(...(state?.presets || []).map(presetRow));
+  el('presetEditor').hidden = false;
+  el('presets').hidden = true;
+  el('editPresets').classList.add('on');
+}
+
+function closePresetEditor() {
+  editingPresets = false;
+  el('presetEditor').hidden = true;
+  el('presets').hidden = false;
+  el('editPresets').classList.remove('on');
+  el('presets').dataset.signature = '';
+  if (state) drawPresets(state);
+}
+
+el('editPresets').addEventListener('click', () => {
+  if (editingPresets) closePresetEditor();
+  else openPresetEditor();
+});
+
+el('addPreset').addEventListener('click', () => {
+  if (el('presetRows').children.length >= MAX_PRESETS) {
+    toast(`A room holds at most ${MAX_PRESETS} presets`);
+    return;
+  }
+  const row = presetRow({ text: 'New message', tone: 'neutral' });
+  el('presetRows').append(row);
+  row.querySelector('.presetText').focus();
+});
+
+el('cancelPresets').addEventListener('click', closePresetEditor);
+
+el('savePresets').addEventListener('click', () => {
+  const presets = [...el('presetRows').children]
+    .map((row) => ({
+      text: row.querySelector('.presetText').value.trim(),
+      tone: row.querySelector('.presetTone').value,
+    }))
+    .filter((preset) => preset.text);
+  send({ cmd: 'set_presets', presets });
+  closePresetEditor();
 });
 
 el('clearRoom').addEventListener('click', () => {

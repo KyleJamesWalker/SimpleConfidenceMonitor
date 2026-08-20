@@ -41,7 +41,7 @@ most, first.
 - [x] **More per-screen overrides.** `scale`, `title` and `next` are settable
       per room but not per screen.
 
-- [ ] **Preset editing on the console.** `set_presets` changes the quick
+- [x] **Preset editing on the console.** `set_presets` changes the quick
  messages, but only over the API. The console shows them and cannot edit
  them.
 

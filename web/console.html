@@ -79,8 +79,16 @@
       </section>
 
       <section class="panel">
-        <h2>Message to speaker</h2>
+        <h2>Message to speaker <button id="editPresets" class="linkish" type="button">edit presets</button></h2>
         <div class="presets" id="presets"></div>
+        <div class="presetEditor" id="presetEditor" hidden>
+          <div id="presetRows"></div>
+          <div class="transport">
+            <button id="addPreset" type="button">Add</button>
+            <button id="savePresets" class="primary" type="button">Save</button>
+            <button id="cancelPresets" type="button">Cancel</button>
+          </div>
+        </div>
         <textarea id="message" rows="2" placeholder="Wrap up"></textarea>
         <div class="tones">
           <button data-tone="neutral" class="tone">Neutral</button>

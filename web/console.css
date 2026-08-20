@@ -515,3 +515,62 @@ button.danger:hover {
   border-color: var(--danger);
   color: var(--danger);
 }
+
+.linkish {
+  float: right;
+  padding: 0.05rem 0.4rem;
+  min-height: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border-color: transparent;
+  background: transparent;
+}
+
+.linkish:hover {
+  border-color: var(--line);
+}
+
+.linkish.on {
+  color: var(--ok);
+}
+
+.presetEditor {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.presetEditor[hidden],
+.presets[hidden] {
+  display: none;
+}
+
+.presetRow {
+  display: grid;
+  grid-template-columns: 1fr 6.5rem 2rem;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.presetRow select {
+  min-height: 40px;
+  padding: 0.3rem;
+  font-size: 0.85rem;
+}
+
+.presetRow input {
+  min-height: 40px;
+}
+
+.removePreset {
+  min-height: 40px;
+  padding: 0;
+  color: #ff9a9a;
+  border-color: #3a1c1c;
+}
+
+.removePreset:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
