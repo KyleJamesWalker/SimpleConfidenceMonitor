@@ -178,17 +178,37 @@ button.primary {
   font-weight: 600;
 }
 
-button.on {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #06122b;
+/* Blue means "this does something". Teal means "this is on". A toggle and a
+   primary action must never look the same. */
+[data-toggle].on {
+  background: #0f3b2c;
+  border-color: var(--ok);
+  color: var(--ok);
   font-weight: 600;
 }
 
+[data-toggle].on::before {
+  content: '\2713\00a0';
+}
+
 #blackout.on {
-  background: var(--danger);
+  background: #3a1111;
   border-color: var(--danger);
-  color: #2a0000;
+  color: #ff9a9a;
+}
+
+[data-tone].on {
+  font-weight: 600;
+}
+
+[data-tone].on::before {
+  content: '\2713\00a0';
+}
+
+[data-tone='neutral'].on {
+  background: #2b2b34;
+  border-color: #4a4a58;
+  color: var(--fg);
 }
 
 [data-tone='warn'].on {
@@ -201,6 +221,15 @@ button.on {
   background: var(--danger);
   border-color: var(--danger);
   color: #2a0000;
+}
+
+/* A live message stays a primary action, and gains a ring to say it is showing. */
+#showMessage.on {
+  box-shadow: 0 0 0 2px var(--ok);
+}
+
+#showMessage.on::after {
+  content: '\00a0\2713';
 }
 
 .field {
