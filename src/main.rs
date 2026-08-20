@@ -6,6 +6,7 @@ use std::time::Duration;
 use clap::Parser;
 use simple_confidence_monitor::auth::Auth;
 use simple_confidence_monitor::autopilot::SCAN_INTERVAL;
+use simple_confidence_monitor::discovery;
 use simple_confidence_monitor::hub::Hub;
 use simple_confidence_monitor::persist::{Snapshots, Store};
 use simple_confidence_monitor::routes::{AppState, router};
@@ -33,6 +34,14 @@ struct Args {
     /// Directory for room snapshots. Without it, state stays in memory.
     #[arg(short, long)]
     state_dir: Option<PathBuf>,
+
+    /// Name to advertise on the local network. Defaults to the port.
+    #[arg(long)]
+    name: Option<String>,
+
+    /// Do not advertise the server over mDNS.
+    #[arg(long)]
+    no_mdns: bool,
 }
 
 #[tokio::main]
@@ -87,6 +96,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let host = advertised_host(args.bind);
     tracing::info!("listening on http://{addr}");
     tracing::info!("open http://{host}:{} to pick a room", args.port);
+
+    // Held for the life of the process. Dropping it withdraws the service.
+    let _advertisement = match args.no_mdns {
+        true => None,
+        false => match discovery::advertise(args.port, args.name.as_deref()) {
+            Ok(advertisement) => {
+                tracing::info!("advertised on this network as {}", advertisement.fullname());
+                Some(advertisement)
+            }
+            Err(err) => {
+                tracing::warn!("could not advertise over mDNS: {err}");
+                None
+            }
+        },
+    };
 
     axum::serve(listener, app).await?;
     Ok(())

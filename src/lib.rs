@@ -2,6 +2,7 @@ pub mod assets;
 pub mod auth;
 pub mod autopilot;
 pub mod clock;
+pub mod discovery;
 pub mod hub;
 pub mod persist;
 pub mod room;

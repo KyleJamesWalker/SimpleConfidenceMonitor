@@ -27,7 +27,7 @@ most, first.
       defaults, including its snapshot.
 - [x] **Speaker and notes on the viewer.** Optional lines, so a confidence
       monitor can carry the cue note.
-- [ ] **Discovery over mDNS.** Advertise the server so nobody reads an IP
+- [x] **Discovery over mDNS.** Advertise the server so nobody reads an IP
       address aloud. Open question in the spec.
 
 ## Polish

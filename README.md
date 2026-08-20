@@ -200,6 +200,8 @@ joins late stays silent.
 | `--bind` | `0.0.0.0` | Listening address. The default lets the stage display reach the server |
 | `--token` | none | Token required to open the console and to send commands. Also read from `SCM_TOKEN` |
 | `--state-dir` | none | Directory for room snapshots. Without it, state stays in memory |
+| `--name` | the port | Name to advertise on the local network |
+| `--no-mdns` | off | Stop advertising the server over mDNS |
 
 Started without `--token`, the server logs a warning and leaves the console
 open. Viewer routes never ask for the token, because a display machine cannot
@@ -211,6 +213,19 @@ Scripts send it as `Authorization: Bearer <value>`.
 With `--state-dir`, the server writes each room to `<dir>/<room>.json` one
 second after it settles. Rooms load again at startup, and a timer that was
 running comes back paused at its saved elapsed time.
+
+### Finding the server
+
+The server advertises itself over mDNS as `_scm._tcp.local.`, so a phone or a
+laptop on the same network can find it without anyone reading an IP address
+aloud. `--name "Main Stage"` sets the name a browser shows. `--no-mdns` turns
+the announcement off, and a network that blocks multicast logs a warning and
+carries on.
+
+```bash
+dns-sd -B _scm._tcp local        # macOS
+avahi-browse -r _scm._tcp        # Linux
+```
 
 ## Development
 
