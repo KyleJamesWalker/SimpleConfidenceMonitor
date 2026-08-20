@@ -166,6 +166,11 @@ export function nextClockTime(raw, nowMs) {
   return at.getTime();
 }
 
+export function activeCue(rundown) {
+  const cues = rundown?.cues || [];
+  return cues.find((cue) => cue.id === rundown.active) || null;
+}
+
 // Clock times for a rundown. The active cue anchors on the wall clock, and the
 // rest chain from it. An overrunning cue chains the rest from now, because a
 // cue cannot start in the past.

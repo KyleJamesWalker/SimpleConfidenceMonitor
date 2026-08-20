@@ -103,6 +103,16 @@ pub struct Display {
     /// Sound a tone when the timer reaches zero.
     #[serde(default)]
     pub chime: bool,
+    /// Show the speaker of the loaded cue.
+    #[serde(default = "yes")]
+    pub show_speaker: bool,
+    /// Show the note on the loaded cue. A note may be for the crew.
+    #[serde(default)]
+    pub show_notes: bool,
+}
+
+fn yes() -> bool {
+    true
 }
 
 /// Duration for a cue added without one.
@@ -124,6 +134,8 @@ impl Default for Display {
             scale: 100,
             flash_at: 0,
             chime: false,
+            show_speaker: true,
+            show_notes: false,
         }
     }
 }
@@ -314,6 +326,8 @@ pub enum Command {
         mirror: Option<bool>,
         scale: Option<u8>,
         chime: Option<bool>,
+        show_speaker: Option<bool>,
+        show_notes: Option<bool>,
     },
     AddCue {
         title: Option<String>,
@@ -429,6 +443,8 @@ impl RoomState {
                 mirror,
                 scale,
                 chime,
+                show_speaker,
+                show_notes,
             } => {
                 let before = self.display.clone();
                 if let Some(title) = title {
@@ -454,6 +470,12 @@ impl RoomState {
                 }
                 if let Some(value) = chime {
                     self.display.chime = *value;
+                }
+                if let Some(value) = show_speaker {
+                    self.display.show_speaker = *value;
+                }
+                if let Some(value) = show_notes {
+                    self.display.show_notes = *value;
                 }
                 before != self.display
             }

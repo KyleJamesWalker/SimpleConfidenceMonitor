@@ -1,4 +1,5 @@
 import {
+  activeCue,
   RoomSocket,
   formatClock,
   formatDuration,
@@ -21,6 +22,8 @@ const el = {
   fullscreen: document.getElementById('fullscreen'),
   soundHint: document.getElementById('soundHint'),
   armed: document.getElementById('armed'),
+  speaker: document.getElementById('speaker'),
+  notes: document.getElementById('notes'),
   aux: document.getElementById('aux'),
   auxLabel: document.getElementById('auxLabel'),
   auxTime: document.getElementById('auxTime'),
@@ -68,6 +71,9 @@ function applyState(frame) {
       triggerFlash();
     }
   }
+  const cue = activeCue(frame.rundown);
+  setText(el.speaker, pick('speaker', display?.show_speaker) ? cue?.speaker : '');
+  setText(el.notes, pick('notes', display?.show_notes) ? cue?.notes : '');
   if (message) {
     setText(el.message, message.text);
     el.message.className = `message ${message.tone || 'neutral'}${

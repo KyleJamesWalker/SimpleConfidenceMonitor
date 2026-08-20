@@ -24,6 +24,8 @@ const TOGGLES = {
   showProgress: (on) => ({ cmd: 'display', show_progress: on }),
   mirror: (on) => ({ cmd: 'display', mirror: on }),
   chime: (on) => ({ cmd: 'display', chime: on }),
+  showSpeaker: (on) => ({ cmd: 'display', show_speaker: on }),
+  showNotes: (on) => ({ cmd: 'display', show_notes: on }),
   autoAdvance: (on) => ({ cmd: 'set_auto_advance', on }),
   auxVisible: (on) => ({ cmd: 'aux_set', visible: on }),
 };
@@ -34,6 +36,8 @@ const TOGGLE_STATE = {
   showProgress: (frame) => frame.display.show_progress,
   mirror: (frame) => frame.display.mirror,
   chime: (frame) => frame.display.chime,
+  showSpeaker: (frame) => frame.display.show_speaker,
+  showNotes: (frame) => frame.display.show_notes,
   autoAdvance: (frame) => frame.rundown.auto_advance,
   auxVisible: (frame) => frame.aux.visible,
 };

@@ -28,6 +28,8 @@ fn busy_room() -> Room {
             mirror: Some(true),
             scale: Some(150),
             chime: Some(true),
+            show_speaker: None,
+            show_notes: Some(true),
         },
         T0,
     );

@@ -316,3 +316,33 @@ body {
 .auxTime.expired {
   color: var(--danger);
 }
+
+.titleGroup {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  min-width: 0;
+}
+
+.speaker {
+  font-size: calc(min(3.2vh, 2.6vw) * var(--scale));
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lowerLeft {
+  display: grid;
+  gap: 0.3em;
+  min-width: 0;
+}
+
+.notes {
+  font-size: calc(min(3vh, 2.4vw) * var(--scale));
+  color: var(--warn);
+  max-width: 40vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

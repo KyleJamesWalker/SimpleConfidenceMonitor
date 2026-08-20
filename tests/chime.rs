@@ -12,6 +12,8 @@ fn display_chime(on: bool) -> Command {
         mirror: None,
         scale: None,
         chime: Some(on),
+        show_speaker: None,
+        show_notes: None,
     }
 }
 
@@ -48,6 +50,8 @@ fn a_display_command_without_a_chime_field_leaves_it_alone() {
             mirror: None,
             scale: None,
             chime: None,
+            show_speaker: None,
+            show_notes: None,
         },
         T0,
     );

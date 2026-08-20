@@ -119,6 +119,8 @@ fn a_display_command_updates_only_the_fields_it_names() {
             mirror: None,
             scale: None,
             chime: None,
+            show_speaker: None,
+            show_notes: None,
         },
         T0,
     );
@@ -132,6 +134,8 @@ fn a_display_command_updates_only_the_fields_it_names() {
             mirror: None,
             scale: None,
             chime: None,
+            show_speaker: None,
+            show_notes: None,
         },
         T0,
     );
@@ -152,6 +156,8 @@ fn scale_clamps_to_the_supported_range() {
         mirror: None,
         scale: Some(scale),
         chime: None,
+        show_speaker: None,
+        show_notes: None,
     };
     assert_eq!(room.apply(&set(10), T0).display.scale, MIN_SCALE);
     assert_eq!(room.apply(&set(255), T0).display.scale, MAX_SCALE);
@@ -195,7 +201,9 @@ fn parses_the_show_commands_from_the_spec() {
             show_progress: None,
             mirror: None,
             scale: None,
-            chime: None
+            chime: None,
+            show_speaker: None,
+            show_notes: None
         }
     );
 }
