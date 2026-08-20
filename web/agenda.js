@@ -1,4 +1,5 @@
 import {
+  agendaSignature,
   RoomSocket,
   formatClock,
   formatDuration,
@@ -34,9 +35,7 @@ function draw() {
   const now = socket.serverNow();
   const out = readout(state.timer, now);
   const rows = projectAgenda(state.rundown, out.remainingMs, now);
-  const signature = JSON.stringify(
-    rows.map((row) => [row.id, row.state, row.startMs, row.endMs, row.title, row.speaker, row.durationMs]),
-  );
+  const signature = agendaSignature(rows);
   if (painted.signature === signature) return;
   painted.signature = signature;
 

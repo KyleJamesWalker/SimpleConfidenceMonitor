@@ -210,6 +210,22 @@ export function screenOverrides(search) {
   return overrides;
 }
 
+// What the agenda repaints on. Every field the table shows belongs here, or an
+// edit to it leaves the page stale until something else moves.
+export function agendaSignature(rows) {
+  return JSON.stringify(
+    rows.map((row) => [
+      row.id,
+      row.state,
+      row.startMs,
+      row.endMs,
+      row.title,
+      row.speaker,
+      row.durationMs,
+    ]),
+  );
+}
+
 export function activeCue(rundown) {
   const cues = rundown?.cues || [];
   return cues.find((cue) => cue.id === rundown.active) || null;
