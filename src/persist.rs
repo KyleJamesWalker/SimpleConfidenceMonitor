@@ -84,14 +84,20 @@ impl Store {
     }
 }
 
-/// A restart means the show already stopped, so a running timer comes back paused.
+/// A restart means the show already stopped, so a running timer comes back
+/// paused. Both timers, or the second one would count the downtime.
 fn restored(snapshot: Snapshot) -> RoomState {
     let mut state = snapshot.state;
-    if let Run::Running { since_ms } = state.timer.run {
-        state.timer.elapsed_ms += snapshot.saved_at_ms.saturating_sub(since_ms);
-        state.timer.run = Run::Paused;
-    }
+    pause_at_save(&mut state.timer, snapshot.saved_at_ms);
+    pause_at_save(&mut state.aux.timer, snapshot.saved_at_ms);
     state
+}
+
+fn pause_at_save(timer: &mut crate::timer::Timer, saved_at_ms: u64) {
+    if let Run::Running { since_ms } = timer.run {
+        timer.elapsed_ms += saved_at_ms.saturating_sub(since_ms);
+        timer.run = Run::Paused;
+    }
 }
 
 /// Debounced writer. A room marks itself dirty, and the flusher writes it once.

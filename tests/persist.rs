@@ -250,3 +250,21 @@ fn forgetting_a_room_drops_it_from_the_pending_set() {
     snapshots.flush(&Hub::new());
     assert!(!dir.join("keynote.json").exists());
 }
+
+#[test]
+fn a_running_aux_timer_also_reloads_paused() {
+    let dir = temp_dir("aux-running");
+    let store = Store::new(&dir).unwrap();
+    let mut state = RoomState::default();
+    state.aux.timer.run = Run::Running { since_ms: T0 };
+    state.aux.visible = true;
+    store.save(&name("keynote"), &state, T0 + 90_000).unwrap();
+
+    let loaded = store.load_all();
+    assert_eq!(
+        loaded[0].1.aux.timer.run,
+        Run::Paused,
+        "a restart stops the show, and that includes the second timer"
+    );
+    assert_eq!(loaded[0].1.aux.timer.elapsed_ms, 90_000);
+}
