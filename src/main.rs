@@ -1,5 +1,5 @@
 use std::net::{IpAddr, SocketAddr, UdpSocket};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -59,16 +59,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         None => Auth::open(),
     });
 
-    let snapshots = match &args.state_dir {
-        Some(dir) => Some(Arc::new(Snapshots::new(Store::new(dir)?))),
+    let opened = match &args.state_dir {
+        Some(dir) => {
+            let store = open_store(dir);
+            let restored = store.load_all();
+            Some((Arc::new(Snapshots::new(store)), restored))
+        }
         None => None,
     };
+    let snapshots = opened.as_ref().map(|(snapshots, _)| snapshots.clone());
     let hub = match &snapshots {
         Some(snapshots) => Hub::with_snapshots(snapshots.clone()),
         None => Hub::new(),
     };
-    if let Some(snapshots) = &snapshots {
-        let restored = Store::new(args.state_dir.clone().expect("dir is set"))?.load_all();
+    if let Some((snapshots, restored)) = opened {
         if !restored.is_empty() {
             tracing::info!(
                 "restored {} room(s) from {:?}",
@@ -78,7 +82,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         hub.restore(restored);
         let flusher_hub = hub.clone();
-        let flusher = snapshots.clone();
+        let flusher = snapshots;
         tokio::spawn(async move { flusher.run(&flusher_hub, SNAPSHOT_DEBOUNCE).await });
     }
 
@@ -117,6 +121,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Best-effort LAN address to print, so an operator can read a URL off the screen.
+/// Snapshots that never land are worse than no snapshots, so refuse to start.
+fn open_store(dir: &Path) -> Store {
+    match Store::new(dir) {
+        Ok(store) => store,
+        Err(err) => {
+            tracing::error!(
+                "cannot write to the state directory {}: {err}",
+                dir.display()
+            );
+            tracing::error!(
+                "a Docker bind mount keeps the host ownership: chown it to the user this container runs as, or set `user:` to match the directory"
+            );
+            std::process::exit(1);
+        }
+    }
+}
+
 fn advertised_host(bind: IpAddr) -> String {
     if !bind.is_unspecified() {
         return bind.to_string();

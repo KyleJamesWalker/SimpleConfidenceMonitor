@@ -268,3 +268,23 @@ fn a_running_aux_timer_also_reloads_paused() {
     );
     assert_eq!(loaded[0].1.aux.timer.elapsed_ms, 90_000);
 }
+
+#[test]
+#[cfg(unix)]
+fn new_rejects_a_directory_it_cannot_write() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = temp_dir("readonly");
+    std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o500)).unwrap();
+    let opened = Store::new(&dir);
+    std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).unwrap();
+    let err = opened.expect_err("a read-only directory must not open");
+    assert_eq!(err.kind(), std::io::ErrorKind::PermissionDenied);
+}
+
+#[test]
+fn new_leaves_no_probe_file_behind() {
+    let dir = temp_dir("probe");
+    Store::new(&dir).unwrap();
+    assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 0);
+}

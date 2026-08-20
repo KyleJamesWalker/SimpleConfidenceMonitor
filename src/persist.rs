@@ -28,7 +28,17 @@ impl Store {
     pub fn new(dir: impl Into<PathBuf>) -> std::io::Result<Self> {
         let dir = dir.into();
         std::fs::create_dir_all(&dir)?;
-        Ok(Self { dir })
+        let store = Self { dir };
+        store.probe()?;
+        Ok(store)
+    }
+
+    /// A bind mount can arrive read-only for this user, and then every save
+    /// fails long after the operator stopped reading the log.
+    fn probe(&self) -> std::io::Result<()> {
+        let path = self.dir.join(".writable");
+        std::fs::write(&path, b"")?;
+        std::fs::remove_file(&path)
     }
 
     pub fn path_for(&self, name: &RoomName) -> PathBuf {

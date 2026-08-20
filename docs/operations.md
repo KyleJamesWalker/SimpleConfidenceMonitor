@@ -241,6 +241,34 @@ A delete also closes the sockets on that room. A console watching it drops and
 reconnects to an empty room, rather than carrying on against a room nobody else
 can reach.
 
+The server refuses to start when it cannot write to the directory, so a
+misconfigured mount fails loudly instead of dropping every snapshot.
+
+### The state directory in Docker
+
+The release image runs as uid 100, gid 101, and needs nothing when `/data` is a
+named volume, because Docker copies that ownership from the image.
+
+A bind mount keeps the host ownership, so pick the user the container runs as
+instead of handing a host directory to a system account that means something
+else on that machine:
+
+```yaml
+services:
+  confidence-monitor:
+    user: "1000:1000"
+    volumes:
+      - /srv/scm-state:/data
+```
+
+```
+sudo chown -R 1000:1000 /srv/scm-state
+```
+
+The server needs no privileges beyond writing that directory, so any uid works.
+Overriding `user` on a named volume means chowning the volume too, since Docker
+already seeded it for uid 100.
+
 ## Finding the server
 
 With `--mdns`, the server advertises itself as `_scm._tcp.local.`, so a phone on
@@ -274,6 +302,9 @@ locked.
 **The display sleeps mid-session.** The viewer holds a screen wake lock where the
 browser supports it, and offers a fullscreen button. Turn off system sleep on the
 display machine as well.
+
+**The server exits at startup with a state directory error.** The user it runs
+as cannot write there. See [State across a restart](#state-across-a-restart).
 
 **A snapshot did not come back.** Unreadable files and names that are not valid
 rooms are skipped at startup rather than failing the boot. Check the log line
