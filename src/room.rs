@@ -100,6 +100,8 @@ pub struct Display {
     pub scale: u8,
     /// A viewer flashes when this value changes.
     pub flash_at: u64,
+    /// Sound a tone when the timer reaches zero.
+    pub chime: bool,
 }
 
 /// Duration for a cue added without one.
@@ -120,6 +122,7 @@ impl Default for Display {
             mirror: false,
             scale: 100,
             flash_at: 0,
+            chime: false,
         }
     }
 }
@@ -256,6 +259,7 @@ pub enum Command {
         show_progress: Option<bool>,
         mirror: Option<bool>,
         scale: Option<u8>,
+        chime: Option<bool>,
     },
     AddCue {
         title: Option<String>,
@@ -348,6 +352,7 @@ impl RoomState {
                 show_progress,
                 mirror,
                 scale,
+                chime,
             } => {
                 let before = self.display.clone();
                 if let Some(title) = title {
@@ -370,6 +375,9 @@ impl RoomState {
                 }
                 if let Some(scale) = scale {
                     self.display.scale = (*scale).clamp(MIN_SCALE, MAX_SCALE);
+                }
+                if let Some(value) = chime {
+                    self.display.chime = *value;
                 }
                 before != self.display
             }

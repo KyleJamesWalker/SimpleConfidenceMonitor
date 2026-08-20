@@ -21,6 +21,7 @@ const TOGGLES = {
   clock24h: (on) => ({ cmd: 'display', clock_24h: on }),
   showProgress: (on) => ({ cmd: 'display', show_progress: on }),
   mirror: (on) => ({ cmd: 'display', mirror: on }),
+  chime: (on) => ({ cmd: 'display', chime: on }),
   autoAdvance: (on) => ({ cmd: 'set_auto_advance', on }),
 };
 const TOGGLE_STATE = {
@@ -29,6 +30,7 @@ const TOGGLE_STATE = {
   clock24h: (frame) => frame.display.clock_24h,
   showProgress: (frame) => frame.display.show_progress,
   mirror: (frame) => frame.display.mirror,
+  chime: (frame) => frame.display.chime,
   autoAdvance: (frame) => frame.rundown.auto_advance,
 };
 

@@ -233,3 +233,20 @@ body {
 .stage.blackout-on .blackout {
   opacity: 1;
 }
+
+.soundHint {
+  position: absolute;
+  bottom: 1.6vh;
+  right: 1vw;
+  border: 1px solid #2e2e34;
+  border-radius: 999px;
+  background: #17171b;
+  color: var(--dim);
+  font-size: 1.9vh;
+  padding: 0.3em 0.9em;
+  cursor: pointer;
+}
+
+.soundHint[hidden] {
+  display: none;
+}

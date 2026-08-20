@@ -11,7 +11,7 @@ most, first.
 - [ ] **Message presets.** Named quick messages on the console, one press to
       send. Every product in the survey has them, and typing during a talk is
       the thing an operator has no hands for.
-- [ ] **Sound on expiry.** A tone when a cue reaches zero, unlocked by the first
+- [x] **Sound on expiry.** A tone when a cue reaches zero, unlocked by the first
       click on the viewer. Browser autoplay policy blocks it until then.
 - [ ] **Agenda view.** A read-only `/<room>/agenda` page listing the rundown
       with planned clock times, for backstage and for the speakers.

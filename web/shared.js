@@ -153,6 +153,12 @@ export function parseDuration(raw) {
   return parts.map(Number).reduce((total, part) => total * 60 + part, 0) * 1000;
 }
 
+// Only the crossing into overtime rings. A viewer joining a room that is
+// already over does not, because prev is null on its first frame.
+export function shouldChime(previousPhase, nextPhase) {
+  return Boolean(previousPhase) && previousPhase !== 'expired' && nextPhase === 'expired';
+}
+
 // Time left in the plan: what remains of the active cue, plus every cue after it.
 export function rundownTotals(rundown, activeRemainingMs) {
   const cues = rundown.cues || [];

@@ -77,7 +77,7 @@ state, so a caller can confirm the `rev` moved.
 | `set_presets` | `presets` | Replaces the quick messages. Each carries `text` and `tone` |
 | `flash` | | Flashes the viewer twice |
 | `blackout` | `on` | Cuts the viewer to black |
-| `display` | `title`, `next_up`, `show_clock`, `clock_24h`, `show_progress`, `mirror`, `scale` | Screen settings. Every field is optional |
+| `display` | `title`, `next_up`, `show_clock`, `clock_24h`, `show_progress`, `mirror`, `scale`, `chime` | Screen settings. Every field is optional |
 
 `tone` is `neutral`, `warn` or `alert`. `scale` is a percent between 50 and 200.
 
@@ -100,8 +100,14 @@ monitor differ from the stage feed without touching the room:
 /keynote?clock=0&progress=0&mirror=1
 ```
 
-`clock`, `progress`, `mirror` and `blackout` each take `1` or `0`. Use `mirror`
-for a display behind teleprompter glass.
+`clock`, `progress`, `mirror`, `blackout` and `sound` each take `1` or `0`. Use
+`mirror` for a display behind teleprompter glass.
+
+`chime` sounds a tone when the timer reaches zero. It starts off, and one screen
+can carry it with `?sound=1` while the rest stay quiet. A browser blocks sound
+until someone interacts with the page, so a viewer with the chime on shows a
+button to tap once. Only the crossing into overtime rings, so a screen that
+joins late stays silent.
 
 ## Configuration
 

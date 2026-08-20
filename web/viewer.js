@@ -4,6 +4,7 @@ import {
   formatDuration,
   readout,
   roomFromPath,
+  shouldChime,
 } from '/assets/shared.js';
 
 const el = {
@@ -18,6 +19,7 @@ const el = {
   status: document.getElementById('status'),
   flash: document.getElementById('flash'),
   fullscreen: document.getElementById('fullscreen'),
+  soundHint: document.getElementById('soundHint'),
 };
 
 const params = new URLSearchParams(location.search);
@@ -103,10 +105,13 @@ function render() {
 
   const phase = out.phase;
   if (painted.phase !== phase) {
+    if (chimeWanted() && shouldChime(painted.phase, phase)) playChime();
     el.timer.className = `timer ${phase}${phase === 'expired' ? ' blink' : ''}`;
     el.bar.className = `bar ${phase}`;
     painted.phase = phase;
   }
+  const askForSound = chimeWanted() && !audio;
+  if (el.soundHint.hidden === askForSound) el.soundHint.hidden = !askForSound;
 
   const width = `${(out.progress * 100).toFixed(2)}%`;
   if (painted.width !== width) {
@@ -138,6 +143,50 @@ requestAnimationFrame(frame);
 el.fullscreen.addEventListener('click', () => {
   if (document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen?.();
+});
+
+function chimeWanted() {
+  return pick('sound', state?.display?.chime);
+}
+
+let audio = null;
+
+// Autoplay policy blocks sound until a gesture, so the context waits for one.
+function unlockAudio() {
+  if (audio) return;
+  const Context = window.AudioContext || window.webkitAudioContext;
+  if (!Context) return;
+  audio = new Context();
+  audio.resume?.();
+}
+
+function playChime() {
+  if (!audio) return;
+  audio.resume?.();
+  const start = audio.currentTime;
+  for (let beep = 0; beep < 3; beep += 1) {
+    const at = start + beep * 0.22;
+    const tone = audio.createOscillator();
+    const gain = audio.createGain();
+    tone.type = 'sine';
+    tone.frequency.value = 880;
+    // Ramp both ends, or the speaker clicks.
+    gain.gain.setValueAtTime(0, at);
+    gain.gain.linearRampToValueAtTime(0.28, at + 0.01);
+    gain.gain.linearRampToValueAtTime(0, at + 0.16);
+    tone.connect(gain).connect(audio.destination);
+    tone.start(at);
+    tone.stop(at + 0.18);
+  }
+}
+
+for (const event of ['click', 'keydown', 'touchstart']) {
+  document.addEventListener(event, unlockAudio, { once: true, passive: true });
+}
+
+el.soundHint.addEventListener('click', () => {
+  unlockAudio();
+  el.soundHint.hidden = true;
 });
 
 document.addEventListener('click', requestWakeLock, { once: true });
