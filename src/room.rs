@@ -124,6 +124,33 @@ impl Default for Display {
     }
 }
 
+/// A message an operator sends with one press.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Preset {
+    pub text: String,
+    #[serde(default)]
+    pub tone: Tone,
+}
+
+pub const MAX_PRESETS: usize = 8;
+pub const PRESET_TEXT_LIMIT: usize = 120;
+
+fn default_presets() -> Vec<Preset> {
+    [
+        ("5 minutes left", Tone::Neutral),
+        ("2 minutes left", Tone::Warn),
+        ("Wrap up", Tone::Warn),
+        ("Time is up", Tone::Alert),
+        ("Slow down", Tone::Neutral),
+    ]
+    .into_iter()
+    .map(|(text, tone)| Preset {
+        text: text.to_string(),
+        tone,
+    })
+    .collect()
+}
+
 /// One item in the running order.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Cue {
@@ -164,7 +191,7 @@ impl Rundown {
 }
 
 /// Everything a viewer needs to render the show.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RoomState {
     /// Increments on every command that changes state.
     pub rev: u64,
@@ -172,6 +199,20 @@ pub struct RoomState {
     pub message: Message,
     pub display: Display,
     pub rundown: Rundown,
+    pub presets: Vec<Preset>,
+}
+
+impl Default for RoomState {
+    fn default() -> Self {
+        Self {
+            rev: 0,
+            timer: Timer::default(),
+            message: Message::default(),
+            display: Display::default(),
+            rundown: Rundown::default(),
+            presets: default_presets(),
+        }
+    }
 }
 
 /// One operator action. The same envelope arrives over the socket and over HTTP.
@@ -243,6 +284,12 @@ pub enum Command {
     PrevCue,
     SetAutoAdvance {
         on: bool,
+    },
+    SendPreset {
+        index: usize,
+    },
+    SetPresets {
+        presets: Vec<Preset>,
     },
 }
 
@@ -400,6 +447,33 @@ impl RoomState {
             Command::SetAutoAdvance { on } => {
                 let changed = self.rundown.auto_advance != *on;
                 self.rundown.auto_advance = *on;
+                changed
+            }
+            Command::SendPreset { index } => {
+                let Some(preset) = self.presets.get(*index).cloned() else {
+                    return false;
+                };
+                self.apply(
+                    &Command::Message {
+                        text: Some(preset.text),
+                        tone: Some(preset.tone),
+                        visible: Some(true),
+                    },
+                    now_ms,
+                )
+            }
+            Command::SetPresets { presets } => {
+                let next: Vec<Preset> = presets
+                    .iter()
+                    .filter(|preset| !preset.text.trim().is_empty())
+                    .take(MAX_PRESETS)
+                    .map(|preset| Preset {
+                        text: preset.text.trim().chars().take(PRESET_TEXT_LIMIT).collect(),
+                        tone: preset.tone,
+                    })
+                    .collect();
+                let changed = self.presets != next;
+                self.presets = next;
                 changed
             }
         }

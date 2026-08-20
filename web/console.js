@@ -96,8 +96,26 @@ function applyState(frame) {
     el(id).classList.toggle('on', Boolean(read(frame)));
   }
   el('showMessage').classList.toggle('on', message.visible && Boolean(message.text));
+  drawPresets(frame);
   drawRundown(frame);
   render();
+}
+
+function drawPresets(frame) {
+  const row = el('presets');
+  const signature = frame.presets.map((preset) => `${preset.tone}:${preset.text}`).join('|');
+  if (row.dataset.signature === signature) return;
+  row.dataset.signature = signature;
+  row.replaceChildren();
+  for (const [index, preset] of frame.presets.entries()) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `preset tone-${preset.tone}`;
+    button.textContent = preset.text;
+    button.title = `Send: ${preset.text}`;
+    button.addEventListener('click', () => send({ cmd: 'send_preset', index }));
+    row.append(button);
+  }
 }
 
 function drawRundown(frame) {

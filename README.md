@@ -43,7 +43,8 @@ Start the server, then open two screens for a room named `keynote`:
 | Operator console | `http://<host>:8080/keynote/edit` | yes |
 
 The console carries the timer, the message to the speaker, and the screen
-controls. Hot keys cover the fast path: space starts and pauses, `r` resets,
+controls. A row of quick messages sits above the message box, so the common
+notes take one press. Replace them per room with `set_presets`. Hot keys cover the fast path: space starts and pauses, `r` resets,
 `b` toggles blackout, `f` flashes the screen.
 
 Every operator action is also an HTTP call, so Bitfocus Companion, a Stream
@@ -72,6 +73,8 @@ state, so a caller can confirm the `rev` moved.
 | `set_thresholds` | `warn_ms`, `danger_ms` | Amber and red points. Zero turns one off |
 | `set_on_expire` | `on_expire` | `count_negative` or `hold_at_zero` |
 | `message` | `text`, `tone`, `visible` | Note to the speaker. Every field is optional |
+| `send_preset` | `index` | Sends the quick message at that position |
+| `set_presets` | `presets` | Replaces the quick messages. Each carries `text` and `tone` |
 | `flash` | | Flashes the viewer twice |
 | `blackout` | `on` | Cuts the viewer to black |
 | `display` | `title`, `next_up`, `show_clock`, `clock_24h`, `show_progress`, `mirror`, `scale` | Screen settings. Every field is optional |
