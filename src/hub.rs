@@ -40,6 +40,16 @@ impl Hub {
         self.rooms.read().expect("hub lock").get(name).cloned()
     }
 
+    /// Drops a room from the registry and forgets its snapshot. Returns whether
+    /// it was there.
+    pub fn remove(&self, name: &RoomName) -> bool {
+        let existed = self.rooms.write().expect("hub lock").remove(name).is_some();
+        if let Some(snapshots) = &self.snapshots {
+            snapshots.forget(name);
+        }
+        existed
+    }
+
     /// Puts loaded rooms back in place at startup.
     pub fn restore(&self, rooms: Vec<(RoomName, RoomState)>) {
         let mut live = self.rooms.write().expect("hub lock");

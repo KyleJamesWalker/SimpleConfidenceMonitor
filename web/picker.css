@@ -50,3 +50,17 @@
 .rooms a {
   font-size: 0.85rem;
 }
+
+.removeRoom {
+  padding: 0.1rem 0.45rem;
+  min-height: 0;
+  font-size: 0.8rem;
+  color: #ff9a9a;
+  border-color: #3a1c1c;
+  background: transparent;
+}
+
+.removeRoom:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}

@@ -90,6 +90,7 @@ state, so a caller can confirm the `rev` moved.
 | `aux_set_duration` | `ms` | Sets the second timer |
 | `aux_adjust` | `ms` | Adds or removes time on the second timer |
 | `aux_set` | `label`, `visible` | Names the second timer and shows or hides it |
+| `clear_room` | | Returns every part of the room to its defaults |
 | `message` | `text`, `tone`, `visible` | Note to the speaker. Every field is optional |
 | `send_preset` | `index` | Sends the quick message at that position |
 | `set_cues` | `cues` | Replaces the running order. Each cue takes `title`, `speaker`, `duration_ms`, `notes` |
@@ -106,6 +107,7 @@ state, so a caller can confirm the `rev` moved.
 |---|---|---|
 | `GET` | `/api/rooms` | The names of the live rooms |
 | `GET` | `/api/rooms/<room>` | Room state, the same shape the socket sends |
+| `DELETE` | `/api/rooms/<room>` | Clears the room, drops it, and deletes its snapshot |
 | `GET` | `/api/rooms/<room>/ws?role=view\|edit` | The live socket |
 | `GET` | `/api/rooms/<room>/rundown.csv` | The running order as CSV |
 | `GET` | `/api/rooms/<room>/rundown.json` | The running order as JSON |
@@ -113,6 +115,16 @@ state, so a caller can confirm the `rev` moved.
 | `POST` | `/api/rooms/<room>/rundown` | Replaces the running order from CSV or JSON |
 | `GET` | `/api/qr?text=<url>` | An SVG QR code |
 | `GET` | `/healthz` | `ok` |
+
+### Clearing a room
+
+`clear_room` returns the timer, the message, the screen, the rundown, the
+presets and the second timer to their defaults, and the console carries a
+button for it. `rev` keeps climbing, so every connected screen sees the change.
+
+`DELETE /api/rooms/<room>` goes further. It clears the room, drops it from the
+registry, and deletes its snapshot. The picker offers this per room. A room
+comes back empty the next time anyone opens it.
 
 ### The second timer
 

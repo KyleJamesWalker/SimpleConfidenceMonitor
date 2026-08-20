@@ -23,7 +23,7 @@ most, first.
       hard stop, shown alongside the main timer.
 - [x] **GET command endpoint.** `GET /api/rooms/<room>/cmd?cmd=start` for
       hardware controllers that can only issue a GET.
-- [ ] **Clear a room.** An endpoint and a console control to reset a room to its
+- [x] **Clear a room.** An endpoint and a console control to reset a room to its
       defaults, including its snapshot.
 - [ ] **Speaker and notes on the viewer.** Optional lines, so a confidence
       monitor can carry the cue note.

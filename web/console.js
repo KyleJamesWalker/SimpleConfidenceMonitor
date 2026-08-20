@@ -310,6 +310,11 @@ el('importFile').addEventListener('change', async (event) => {
   event.target.value = '';
 });
 
+el('clearRoom').addEventListener('click', () => {
+  if (!window.confirm(`Clear everything in ${room}?`)) return;
+  send({ cmd: 'clear_room' });
+});
+
 el('auxStart').addEventListener('click', () => send({ cmd: 'aux_start' }));
 el('auxPause').addEventListener('click', () => send({ cmd: 'aux_pause' }));
 el('auxReset').addEventListener('click', () => send({ cmd: 'aux_reset' }));

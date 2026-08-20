@@ -132,6 +132,17 @@ impl Snapshots {
         }
     }
 
+    /// Drops a room from the pending set and deletes its snapshot.
+    pub fn forget(&self, name: &RoomName) {
+        self.dirty.lock().expect("dirty lock").remove(name);
+        let path = self.store.path_for(name);
+        if let Err(err) = std::fs::remove_file(&path)
+            && err.kind() != std::io::ErrorKind::NotFound
+        {
+            tracing::warn!("could not delete snapshot {path:?}: {err}");
+        }
+    }
+
     /// Waits for a change, settles for the debounce window, then writes.
     pub async fn run(&self, hub: &Hub, debounce: Duration) {
         loop {

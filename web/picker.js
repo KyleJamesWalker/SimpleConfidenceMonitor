@@ -33,6 +33,17 @@ el('openViewer').addEventListener('click', () => {
   window.open(urls(room).viewer, '_blank', 'noopener');
 });
 
+async function deleteRoom(room) {
+  if (!window.confirm(`Delete ${room}? Any screen showing it goes blank.`)) return;
+  const token = el('token').value.trim();
+  const query = token ? `?token=${encodeURIComponent(token)}` : '';
+  const response = await fetch(`/api/rooms/${room}${query}`, { method: 'DELETE' });
+  if (!response.ok) {
+    window.alert(`Could not delete ${room}: ${response.status}`);
+  }
+  loadRooms();
+}
+
 async function loadRooms() {
   try {
     const response = await fetch('/api/rooms');
@@ -57,7 +68,13 @@ async function loadRooms() {
       const edit = document.createElement('a');
       edit.href = urls(room).console;
       edit.textContent = 'console';
-      item.append(name, view, edit);
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'removeRoom';
+      remove.textContent = 'delete';
+      remove.addEventListener('click', () => deleteRoom(room));
+
+      item.append(name, view, edit, remove);
       list.append(item);
     }
   } catch {

@@ -53,7 +53,7 @@ pub fn router(state: AppState) -> Router {
         .route("/assets/{*path}", get(asset))
         .route("/api/qr", get(qr))
         .route("/api/rooms", get(room_list))
-        .route("/api/rooms/{room}", get(room_state))
+        .route("/api/rooms/{room}", get(room_state).delete(delete_room))
         .route(
             "/api/rooms/{room}/cmd",
             post(command).get(command_from_query),
@@ -123,6 +123,32 @@ async fn room_state(State(state): State<AppState>, Path(room): Path<String>) -> 
         Ok(name) => json(state.hub.get_or_create(&name).frame()),
         Err(response) => *response,
     }
+}
+
+/// Clears a room and drops it from the registry, snapshot included.
+async fn delete_room(
+    State(state): State<AppState>,
+    Path(room): Path<String>,
+    Query(params): Query<HashMap<String, String>>,
+    headers: HeaderMap,
+) -> Response {
+    let Ok(name) = RoomName::parse(&room) else {
+        return (StatusCode::BAD_REQUEST, "bad room name").into_response();
+    };
+    if state
+        .auth
+        .check(&headers, params.get("token").map(String::as_str))
+        == Outcome::Denied
+    {
+        return denied();
+    }
+    // Clear first, so a client still connected sees an empty room rather than
+    // the last state of a room that no longer exists.
+    if let Some(room) = state.hub.get(&name) {
+        room.apply(&Command::ClearRoom, crate::clock::now_ms());
+    }
+    let removed = state.hub.remove(&name);
+    json(serde_json::json!({ "removed": removed }).to_string())
 }
 
 async fn command(

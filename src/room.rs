@@ -369,6 +369,8 @@ pub enum Command {
         label: Option<String>,
         visible: Option<bool>,
     },
+    /// Returns every part of the room to its default. rev keeps climbing.
+    ClearRoom,
 }
 
 impl RoomState {
@@ -532,6 +534,19 @@ impl RoomState {
                 changed
             }
             Command::ScheduleStart { at_ms } => self.timer.schedule_start(*at_ms),
+            Command::ClearRoom => {
+                let fresh = RoomState::default();
+                let changed = self.timer != fresh.timer
+                    || self.message != fresh.message
+                    || self.display != fresh.display
+                    || self.rundown != fresh.rundown
+                    || self.presets != fresh.presets
+                    || self.aux != fresh.aux;
+                let rev = self.rev;
+                *self = fresh;
+                self.rev = rev;
+                changed
+            }
             Command::AuxStart => self.aux.timer.start(now_ms),
             Command::AuxPause => self.aux.timer.pause(now_ms),
             Command::AuxReset => self.aux.timer.reset(),

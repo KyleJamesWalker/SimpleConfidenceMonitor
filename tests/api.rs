@@ -526,3 +526,82 @@ async fn a_guarded_server_gates_a_get_command() {
     assert_eq!(get_cmd(addr, "cmd=start").await.status(), 401);
     assert_eq!(get_cmd(addr, "cmd=start&token=s3cret").await.status(), 200);
 }
+
+#[tokio::test]
+async fn deleting_a_room_takes_it_off_the_list() {
+    let addr = open_server().await;
+    get_cmd(addr, "cmd=start").await;
+    let body: serde_json::Value = client()
+        .get(format!("http://{addr}/api/rooms"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(body["rooms"], serde_json::json!(["keynote"]));
+
+    let response = client()
+        .delete(format!("http://{addr}/api/rooms/keynote"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+    let body: serde_json::Value = response.json().await.unwrap();
+    assert_eq!(body["removed"], true);
+
+    let body: serde_json::Value = client()
+        .get(format!("http://{addr}/api/rooms"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(body["rooms"], serde_json::json!([]));
+}
+
+#[tokio::test]
+async fn deleting_a_room_that_is_not_there_says_so() {
+    let addr = open_server().await;
+    let body: serde_json::Value = client()
+        .delete(format!("http://{addr}/api/rooms/ghost"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(body["removed"], false);
+}
+
+#[tokio::test]
+async fn a_guarded_server_refuses_a_delete_without_a_token() {
+    let addr = guarded_server().await;
+    let response = client()
+        .delete(format!("http://{addr}/api/rooms/keynote"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 401);
+}
+
+#[tokio::test]
+async fn a_deleted_room_comes_back_empty() {
+    let addr = open_server().await;
+    get_cmd(addr, "cmd=set_duration&ms=60000").await;
+    client()
+        .delete(format!("http://{addr}/api/rooms/keynote"))
+        .send()
+        .await
+        .unwrap();
+    let body: serde_json::Value = client()
+        .get(format!("http://{addr}/api/rooms/keynote"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(body["timer"]["duration_ms"], 900_000);
+}

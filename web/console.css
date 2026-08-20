@@ -470,3 +470,13 @@ kbd {
 .auxRow button {
   flex: 0 0 auto;
 }
+
+button.danger {
+  border-color: #5a2020;
+  color: #ff9a9a;
+}
+
+button.danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}

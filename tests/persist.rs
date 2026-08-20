@@ -224,3 +224,29 @@ fn a_snapshot_written_before_a_field_existed_still_loads() {
     assert_eq!(loaded[0].1.timer.start_at_ms, None);
     assert!(!loaded[0].1.display.chime);
 }
+
+#[test]
+fn forgetting_a_room_deletes_its_snapshot() {
+    let dir = temp_dir("forget");
+    let snapshots = Snapshots::new(Store::new(&dir).unwrap());
+    let hub = Hub::new();
+    hub.get_or_create(&name("keynote"))
+        .apply(&Command::SetDuration { ms: 60_000 }, T0);
+    snapshots.mark(&name("keynote"));
+    snapshots.flush(&hub);
+    assert!(dir.join("keynote.json").is_file());
+
+    snapshots.forget(&name("keynote"));
+    assert!(!dir.join("keynote.json").exists());
+}
+
+#[test]
+fn forgetting_a_room_drops_it_from_the_pending_set() {
+    let dir = temp_dir("forget-pending");
+    let snapshots = Snapshots::new(Store::new(&dir).unwrap());
+    snapshots.mark(&name("keynote"));
+    snapshots.forget(&name("keynote"));
+    assert_eq!(snapshots.pending(), 0);
+    snapshots.flush(&Hub::new());
+    assert!(!dir.join("keynote.json").exists());
+}
