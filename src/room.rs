@@ -67,12 +67,67 @@ impl std::fmt::Display for RoomName {
     }
 }
 
+/// Emphasis for an operator note. The viewer colors the overlay by tone.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Tone {
+    #[default]
+    Neutral,
+    Warn,
+    Alert,
+}
+
+/// A note to the speaker.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct Message {
+    pub text: String,
+    pub tone: Tone,
+    pub visible: bool,
+}
+
+/// The viewer settings that are neither the timer nor the message.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Display {
+    pub title: String,
+    pub next_up: String,
+    pub show_clock: bool,
+    pub clock_24h: bool,
+    pub show_progress: bool,
+    pub blackout: bool,
+    /// Horizontal flip, for a screen behind teleprompter glass.
+    pub mirror: bool,
+    pub scale: u8,
+    /// A viewer flashes when this value changes.
+    pub flash_at: u64,
+}
+
+pub const MIN_SCALE: u8 = 50;
+pub const MAX_SCALE: u8 = 200;
+
+impl Default for Display {
+    fn default() -> Self {
+        Self {
+            title: String::new(),
+            next_up: String::new(),
+            show_clock: true,
+            clock_24h: true,
+            show_progress: true,
+            blackout: false,
+            mirror: false,
+            scale: 100,
+            flash_at: 0,
+        }
+    }
+}
+
 /// Everything a viewer needs to render the show.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct RoomState {
     /// Increments on every command that changes state.
     pub rev: u64,
     pub timer: Timer,
+    pub message: Message,
+    pub display: Display,
 }
 
 /// One operator action. The same envelope arrives over the socket and over HTTP.
@@ -82,34 +137,122 @@ pub enum Command {
     Start,
     Pause,
     Reset,
-    SetDuration { ms: u64 },
-    Adjust { ms: i64 },
-    SetMode { mode: Mode },
-    SetThresholds { warn_ms: u64, danger_ms: u64 },
-    SetOnExpire { on_expire: OnExpire },
+    SetDuration {
+        ms: u64,
+    },
+    Adjust {
+        ms: i64,
+    },
+    SetMode {
+        mode: Mode,
+    },
+    SetThresholds {
+        warn_ms: u64,
+        danger_ms: u64,
+    },
+    SetOnExpire {
+        on_expire: OnExpire,
+    },
+    /// Every field is optional, so the console can change one of them.
+    Message {
+        text: Option<String>,
+        tone: Option<Tone>,
+        visible: Option<bool>,
+    },
+    Flash,
+    Blackout {
+        on: bool,
+    },
+    Display {
+        title: Option<String>,
+        next_up: Option<String>,
+        show_clock: Option<bool>,
+        clock_24h: Option<bool>,
+        show_progress: Option<bool>,
+        mirror: Option<bool>,
+        scale: Option<u8>,
+    },
 }
 
 impl RoomState {
     /// Applies one command. Returns true when the state changed.
     pub fn apply(&mut self, cmd: &Command, now_ms: u64) -> bool {
-        let timer = &mut self.timer;
         match cmd {
-            Command::Start => timer.start(now_ms),
-            Command::Pause => timer.pause(now_ms),
-            Command::Reset => timer.reset(),
-            Command::SetDuration { ms } => timer.set_duration(*ms),
-            Command::Adjust { ms } => timer.adjust(*ms),
-            Command::SetMode { mode } => timer.set_mode(*mode),
+            Command::Start => self.timer.start(now_ms),
+            Command::Pause => self.timer.pause(now_ms),
+            Command::Reset => self.timer.reset(),
+            Command::SetDuration { ms } => self.timer.set_duration(*ms),
+            Command::Adjust { ms } => self.timer.adjust(*ms),
+            Command::SetMode { mode } => self.timer.set_mode(*mode),
             Command::SetThresholds { warn_ms, danger_ms } => {
-                let changed = timer.warn_ms != *warn_ms || timer.danger_ms != *danger_ms;
-                timer.warn_ms = *warn_ms;
-                timer.danger_ms = *danger_ms;
+                let changed = self.timer.warn_ms != *warn_ms || self.timer.danger_ms != *danger_ms;
+                self.timer.warn_ms = *warn_ms;
+                self.timer.danger_ms = *danger_ms;
                 changed
             }
             Command::SetOnExpire { on_expire } => {
-                let changed = timer.on_expire != *on_expire;
-                timer.on_expire = *on_expire;
+                let changed = self.timer.on_expire != *on_expire;
+                self.timer.on_expire = *on_expire;
                 changed
+            }
+            Command::Message {
+                text,
+                tone,
+                visible,
+            } => {
+                let before = self.message.clone();
+                if let Some(text) = text {
+                    self.message.text = text.clone();
+                }
+                if let Some(tone) = tone {
+                    self.message.tone = *tone;
+                }
+                if let Some(visible) = visible {
+                    self.message.visible = *visible;
+                }
+                before != self.message
+            }
+            Command::Flash => {
+                self.display.flash_at = now_ms;
+                true
+            }
+            Command::Blackout { on } => {
+                let changed = self.display.blackout != *on;
+                self.display.blackout = *on;
+                changed
+            }
+            Command::Display {
+                title,
+                next_up,
+                show_clock,
+                clock_24h,
+                show_progress,
+                mirror,
+                scale,
+            } => {
+                let before = self.display.clone();
+                if let Some(title) = title {
+                    self.display.title = title.clone();
+                }
+                if let Some(next_up) = next_up {
+                    self.display.next_up = next_up.clone();
+                }
+                if let Some(value) = show_clock {
+                    self.display.show_clock = *value;
+                }
+                if let Some(value) = clock_24h {
+                    self.display.clock_24h = *value;
+                }
+                if let Some(value) = show_progress {
+                    self.display.show_progress = *value;
+                }
+                if let Some(value) = mirror {
+                    self.display.mirror = *value;
+                }
+                if let Some(scale) = scale {
+                    self.display.scale = (*scale).clamp(MIN_SCALE, MAX_SCALE);
+                }
+                before != self.display
             }
         }
     }

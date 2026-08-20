@@ -139,3 +139,32 @@ async fn an_invalid_room_name_is_refused() {
     let url = format!("ws://{addr}/api/rooms/a%20b/ws?role=edit");
     assert!(tokio_tungstenite::connect_async(url).await.is_err());
 }
+
+#[tokio::test]
+async fn a_message_reaches_a_viewer_with_its_tone() {
+    let addr = serve().await;
+    let mut editor = connect(addr, "keynote", "edit").await;
+    let mut viewer = connect(addr, "keynote", "view").await;
+    next_frame(&mut viewer, "state").await;
+    send(
+        &mut editor,
+        r#"{"cmd":"message","text":"Wrap up","tone":"alert","visible":true}"#,
+    )
+    .await;
+
+    let frame = next_frame(&mut viewer, "state").await;
+    assert_eq!(frame["message"]["text"], "Wrap up");
+    assert_eq!(frame["message"]["tone"], "alert");
+    assert_eq!(frame["message"]["visible"], true);
+}
+
+#[tokio::test]
+async fn the_state_frame_carries_the_display_settings() {
+    let addr = serve().await;
+    let mut viewer = connect(addr, "keynote", "view").await;
+    let frame = next_frame(&mut viewer, "state").await;
+    assert_eq!(frame["display"]["scale"], 100);
+    assert_eq!(frame["display"]["show_clock"], true);
+    assert_eq!(frame["display"]["blackout"], false);
+    assert_eq!(frame["display"]["title"], "");
+}

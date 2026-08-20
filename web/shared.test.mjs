@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { elapsedMs, formatClock, formatDuration, readout } from './shared.js';
+import { elapsedMs, formatClock, formatDuration, parseDuration, readout } from './shared.js';
 
 const T0 = 1_700_000_000_000;
 const MIN = 60_000;
@@ -118,4 +118,26 @@ test('formats the wall clock in both conventions', () => {
   assert.equal(formatClock(at, false), '3:04:05 PM');
   const midnight = new Date(2026, 0, 2, 0, 30, 0);
   assert.equal(formatClock(midnight, false), '12:30:00 AM');
+});
+
+test('parses plain minutes', () => {
+  assert.equal(parseDuration('15'), 15 * MIN);
+  assert.equal(parseDuration('0'), 0);
+  assert.equal(parseDuration(' 7 '), 7 * MIN);
+});
+
+test('parses minutes and seconds', () => {
+  assert.equal(parseDuration('15:00'), 15 * MIN);
+  assert.equal(parseDuration('1:30'), 90_000);
+  assert.equal(parseDuration('0:45'), 45_000);
+});
+
+test('parses hours, minutes and seconds', () => {
+  assert.equal(parseDuration('1:02:03'), 3_723_000);
+});
+
+test('rejects text that is not a duration', () => {
+  for (const bad of ['', '   ', 'abc', '1:2:3:4', '1:-2', '5m']) {
+    assert.equal(parseDuration(bad), null, `expected ${bad} to be rejected`);
+  }
 });

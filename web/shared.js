@@ -143,6 +143,16 @@ export function formatClock(date, use24h) {
   return `${use24h ? String(shown).padStart(2, '0') : shown}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}${suffix}`;
 }
 
+// Accepts minutes, mm:ss, or hh:mm:ss. Returns null when the text is not a duration.
+export function parseDuration(raw) {
+  const text = String(raw).trim();
+  if (!text) return null;
+  const parts = text.split(':');
+  if (parts.length > 3 || parts.some((part) => !/^\d+$/.test(part))) return null;
+  if (parts.length === 1) return Math.round(Number(parts[0]) * MIN);
+  return parts.map(Number).reduce((total, part) => total * 60 + part, 0) * 1000;
+}
+
 export function roomFromPath() {
   return location.pathname.split('/').filter(Boolean)[0] || 'main';
 }

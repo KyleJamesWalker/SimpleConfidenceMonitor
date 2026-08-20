@@ -179,9 +179,28 @@ button.primary {
 }
 
 button.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #06122b;
+  font-weight: 600;
+}
+
+#blackout.on {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #2a0000;
+}
+
+[data-tone='warn'].on {
   background: var(--warn);
   border-color: var(--warn);
   color: #1a1400;
+}
+
+[data-tone='alert'].on {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #2a0000;
 }
 
 .field {
@@ -217,4 +236,63 @@ textarea {
   padding: 0.55rem 1rem;
   border-radius: 999px;
   font-size: 0.85rem;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.tones,
+.toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tones button {
+  flex: 1 1 5rem;
+}
+
+.toggles button {
+  flex: 1 1 6rem;
+  font-size: 0.9rem;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 3.2rem;
+  font-size: 1.05rem;
+}
+
+input[type='range'] {
+  padding: 0;
+  min-height: 2rem;
+  accent-color: var(--accent);
+}
+
+output {
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.keys ul {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+  color: var(--dim);
+  font-size: 0.85rem;
+}
+
+kbd {
+  background: #22222b;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0.05rem 0.4rem;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.8rem;
+  color: var(--fg);
 }
