@@ -1,0 +1,17 @@
+FROM alpine:3.20
+RUN apk add --no-cache ca-certificates tzdata
+
+RUN addgroup -S scm && adduser -S -G scm scm
+
+RUN mkdir -p /data && chown -R scm:scm /data
+WORKDIR /data
+
+ARG TARGETARCH
+COPY dist/simple-confidence-monitor-${TARGETARCH} /usr/local/bin/simple-confidence-monitor
+RUN chmod +x /usr/local/bin/simple-confidence-monitor
+
+USER scm
+EXPOSE 8080
+
+ENTRYPOINT ["/usr/local/bin/simple-confidence-monitor"]
+CMD ["--port", "8080", "--state-dir", "/data"]
