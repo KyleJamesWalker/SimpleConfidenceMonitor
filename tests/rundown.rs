@@ -260,3 +260,68 @@ fn parses_the_rundown_commands() {
         Command::SetAutoAdvance { on: true }
     );
 }
+
+#[test]
+fn editing_the_active_cue_leaves_a_running_timer_alone() {
+    let room = Room::default();
+    let ids = with_cues(&room);
+    room.apply(&Command::LoadCue { id: ids[1] }, T0);
+    room.apply(&Command::Start, T0);
+
+    let state = room.apply(
+        &Command::UpdateCue {
+            id: ids[1],
+            title: None,
+            speaker: None,
+            duration_ms: None,
+            notes: Some("remember the mic".into()),
+        },
+        T0 + 5 * MIN,
+    );
+
+    assert_eq!(
+        state.timer.run,
+        Run::Running { since_ms: T0 },
+        "a note edit must not stop the clock on a talk in progress"
+    );
+    assert_eq!(state.timer.elapsed_at(T0 + 5 * MIN), 5 * MIN);
+    assert_eq!(state.rundown.cues[1].notes, "remember the mic");
+}
+
+#[test]
+fn editing_the_active_cue_title_still_updates_the_screen() {
+    let room = Room::default();
+    let ids = with_cues(&room);
+    room.apply(&Command::LoadCue { id: ids[0] }, T0);
+    let state = room.apply(
+        &Command::UpdateCue {
+            id: ids[0],
+            title: Some("Doors".into()),
+            speaker: None,
+            duration_ms: None,
+            notes: None,
+        },
+        T0,
+    );
+    assert_eq!(state.display.title, "Doors");
+}
+
+#[test]
+fn changing_the_active_cue_duration_retargets_a_running_timer() {
+    let room = Room::default();
+    let ids = with_cues(&room);
+    room.apply(&Command::LoadCue { id: ids[1] }, T0);
+    room.apply(&Command::Start, T0);
+    let state = room.apply(
+        &Command::UpdateCue {
+            id: ids[1],
+            title: None,
+            speaker: None,
+            duration_ms: Some(45 * MIN),
+            notes: None,
+        },
+        T0 + MIN,
+    );
+    assert_eq!(state.timer.duration_ms, 45 * MIN);
+    assert_eq!(state.timer.run, Run::Running { since_ms: T0 });
+}

@@ -521,7 +521,7 @@ impl RoomState {
                 }
                 let changed = before != self.rundown.cues[index];
                 if changed && self.rundown.active == Some(*id) {
-                    self.load_cue(*id, now_ms);
+                    self.point_at_active_cue();
                 }
                 changed
             }
@@ -634,26 +634,34 @@ impl RoomState {
         }
     }
 
-    /// Points the timer and the screen at one cue. The timer starts from zero.
+    /// Points the timer and the screen at one cue, and starts it from zero.
     pub fn load_cue(&mut self, id: u64, _now_ms: u64) -> bool {
-        let Some(index) = self.rundown.position_of(id) else {
+        if self.rundown.position_of(id).is_none() {
             return false;
-        };
-        let cue = self.rundown.cues[index].clone();
-        let next_title = self
-            .rundown
-            .cues
-            .get(index + 1)
-            .map(|cue| cue.title.clone())
-            .unwrap_or_default();
+        }
         self.rundown.active = Some(id);
-        self.timer.duration_ms = cue.duration_ms;
+        self.point_at_active_cue();
         self.timer.run = Run::Stopped;
         self.timer.elapsed_ms = 0;
         self.timer.start_at_ms = None;
-        self.display.title = cue.title;
-        self.display.next_up = next_title;
         true
+    }
+
+    /// Copies the active cue onto the screen and the timer target, and leaves
+    /// the transport alone. Editing the cue on air must not stop the clock.
+    fn point_at_active_cue(&mut self) {
+        let Some(index) = self.rundown.active_position() else {
+            return;
+        };
+        let cue = self.rundown.cues[index].clone();
+        self.display.next_up = self
+            .rundown
+            .cues
+            .get(index + 1)
+            .map(|next| next.title.clone())
+            .unwrap_or_default();
+        self.display.title = cue.title;
+        self.timer.duration_ms = cue.duration_ms;
     }
 
     /// Moves the active cue by one step. Stops at either end.
