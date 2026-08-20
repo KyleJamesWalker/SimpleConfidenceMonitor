@@ -38,7 +38,7 @@ async fn viewer_route_rejects_an_invalid_room_name() {
 }
 
 #[tokio::test]
-async fn viewer_route_creates_the_room() {
+async fn viewer_route_does_not_create_the_room() {
     let hub = Hub::new();
     let app = router(AppState::open(hub.clone()));
     let res = app
@@ -51,7 +51,11 @@ async fn viewer_route_creates_the_room() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(hub.room_count(), 1);
+    assert_eq!(
+        hub.room_count(),
+        0,
+        "serving a page must not register a room; the socket or a write does"
+    );
 }
 
 #[tokio::test]

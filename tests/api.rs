@@ -233,16 +233,14 @@ async fn the_room_list_names_the_live_rooms() {
         .unwrap();
     assert_eq!(body["rooms"], serde_json::json!([]));
 
-    client()
-        .get(format!("http://{addr}/api/rooms/keynote"))
-        .send()
-        .await
-        .unwrap();
-    client()
-        .get(format!("http://{addr}/breakout"))
-        .send()
-        .await
-        .unwrap();
+    // A write brings a room into being. A read does not.
+    for room in ["keynote", "breakout"] {
+        client()
+            .get(format!("http://{addr}/api/rooms/{room}/cmd?cmd=start"))
+            .send()
+            .await
+            .unwrap();
+    }
 
     let body: serde_json::Value = client()
         .get(format!("http://{addr}/api/rooms"))
@@ -604,4 +602,95 @@ async fn a_deleted_room_comes_back_empty() {
         .await
         .unwrap();
     assert_eq!(body["timer"]["duration_ms"], 900_000);
+}
+
+#[tokio::test]
+async fn a_get_command_keeps_a_numeric_speaker_and_note_as_text() {
+    let addr = open_server().await;
+    let body: serde_json::Value = get_cmd(
+        addr,
+        "cmd=add_cue&title=Opening&speaker=1234&notes=0&duration_ms=60000",
+    )
+    .await
+    .json()
+    .await
+    .unwrap();
+    let cue = &body["rundown"]["cues"][0];
+    assert_eq!(cue["speaker"], "1234");
+    assert_eq!(cue["notes"], "0");
+    assert_eq!(cue["title"], "Opening");
+}
+
+#[tokio::test]
+async fn a_get_command_keeps_a_boolean_looking_label_as_text() {
+    let addr = open_server().await;
+    let body: serde_json::Value = get_cmd(addr, "cmd=aux_set&label=true")
+        .await
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(body["aux"]["label"], "true");
+}
+
+#[tokio::test]
+async fn reading_a_room_does_not_create_it() {
+    let addr = open_server().await;
+    for path in [
+        "/typo-viewer",
+        "/typo-agenda/agenda",
+        "/api/rooms/typo-state",
+        "/api/rooms/typo-export/rundown.csv",
+    ] {
+        let response = client()
+            .get(format!("http://{addr}{path}"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 200, "{path} should still serve");
+    }
+
+    let body: serde_json::Value = client()
+        .get(format!("http://{addr}/api/rooms"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(
+        body["rooms"],
+        serde_json::json!([]),
+        "a read must not litter the room list"
+    );
+}
+
+#[tokio::test]
+async fn reading_a_room_that_is_not_there_returns_the_defaults() {
+    let addr = open_server().await;
+    let body: serde_json::Value = client()
+        .get(format!("http://{addr}/api/rooms/ghost"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(body["rev"], 0);
+    assert_eq!(body["timer"]["duration_ms"], 900_000);
+    assert_eq!(body["viewers"], 0);
+}
+
+#[tokio::test]
+async fn a_write_still_creates_the_room() {
+    let addr = open_server().await;
+    get_cmd(addr, "cmd=start").await;
+    let body: serde_json::Value = client()
+        .get(format!("http://{addr}/api/rooms"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(body["rooms"], serde_json::json!(["keynote"]));
 }

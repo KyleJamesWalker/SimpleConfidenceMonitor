@@ -13,7 +13,7 @@ use qrcode::render::svg;
 use crate::assets::Web;
 use crate::auth::{Auth, COOKIE, Outcome};
 use crate::hub::Hub;
-use crate::room::{Command, CueDraft, RoomName};
+use crate::room::{Command, CueDraft, Room, RoomName};
 use crate::rundown_io::{parse_csv, to_csv};
 use crate::ws::{Role, serve_socket};
 
@@ -76,15 +76,15 @@ async fn picker() -> Response {
     page("picker.html", None)
 }
 
-async fn viewer(State(state): State<AppState>, Path(room): Path<String>) -> Response {
-    match room_of(&state, &room) {
+async fn viewer(State(_state): State<AppState>, Path(room): Path<String>) -> Response {
+    match named(&room) {
         Ok(_) => page("viewer.html", None),
         Err(response) => *response,
     }
 }
 
-async fn agenda(State(state): State<AppState>, Path(room): Path<String>) -> Response {
-    match room_of(&state, &room) {
+async fn agenda(State(_state): State<AppState>, Path(room): Path<String>) -> Response {
+    match named(&room) {
         Ok(_) => page("agenda.html", None),
         Err(response) => *response,
     }
@@ -96,7 +96,7 @@ async fn console(
     Query(params): Query<HashMap<String, String>>,
     headers: HeaderMap,
 ) -> Response {
-    if let Err(response) = room_of(&state, &room) {
+    if let Err(response) = named(&room) {
         return *response;
     }
     match state
@@ -119,9 +119,13 @@ async fn room_list(State(state): State<AppState>) -> Response {
 }
 
 async fn room_state(State(state): State<AppState>, Path(room): Path<String>) -> Response {
-    match room_of(&state, &room) {
-        Ok(name) => json(state.hub.get_or_create(&name).frame()),
-        Err(response) => *response,
+    let name = match named(&room) {
+        Ok(name) => name,
+        Err(response) => return *response,
+    };
+    match state.hub.get(&name) {
+        Some(room) => json(room.frame()),
+        None => json(Room::default().frame()),
     }
 }
 
@@ -179,7 +183,18 @@ async fn command(
 }
 
 /// Fields that stay text even when the value looks like a number or a boolean.
-const TEXT_FIELDS: [&str; 7] = ["cmd", "text", "tone", "title", "next_up", "label", "mode"];
+const TEXT_FIELDS: [&str; 10] = [
+    "cmd",
+    "text",
+    "tone",
+    "title",
+    "next_up",
+    "label",
+    "mode",
+    "speaker",
+    "notes",
+    "on_expire",
+];
 
 /// A command from query parameters, for a controller that can only issue a GET.
 async fn command_from_query(
@@ -235,11 +250,11 @@ fn query_value(key: &str, value: &str) -> serde_json::Value {
 }
 
 async fn export_csv(State(state): State<AppState>, Path(room): Path<String>) -> Response {
-    let name = match room_of(&state, &room) {
+    let name = match named(&room) {
         Ok(name) => name,
         Err(response) => return *response,
     };
-    let cues = state.hub.get_or_create(&name).snapshot().rundown.cues;
+    let cues = cues_of(&state, &name);
     (
         [
             (header::CONTENT_TYPE, "text/csv; charset=utf-8".to_string()),
@@ -254,11 +269,11 @@ async fn export_csv(State(state): State<AppState>, Path(room): Path<String>) -> 
 }
 
 async fn export_json(State(state): State<AppState>, Path(room): Path<String>) -> Response {
-    let name = match room_of(&state, &room) {
+    let name = match named(&room) {
         Ok(name) => name,
         Err(response) => return *response,
     };
-    let cues = state.hub.get_or_create(&name).snapshot().rundown.cues;
+    let cues = cues_of(&state, &name);
     json(serde_json::json!({ "cues": cues }).to_string())
 }
 
@@ -367,15 +382,24 @@ async fn asset(Path(path): Path<String>) -> Response {
 
 /// Validates the name and creates the room, or returns the response to send back.
 fn room_of(state: &AppState, room: &str) -> Result<RoomName, Box<Response>> {
-    match RoomName::parse(room) {
-        Ok(name) => {
-            state.hub.get_or_create(&name);
-            Ok(name)
-        }
-        Err(err) => Err(Box::new(
-            (StatusCode::BAD_REQUEST, err.to_string()).into_response(),
-        )),
-    }
+    let name = named(room)?;
+    state.hub.get_or_create(&name);
+    Ok(name)
+}
+
+/// Validates the name without bringing a room into being. A read uses this, so
+/// a typo or a crawler cannot litter the room list.
+fn named(room: &str) -> Result<RoomName, Box<Response>> {
+    RoomName::parse(room)
+        .map_err(|err| Box::new((StatusCode::BAD_REQUEST, err.to_string()).into_response()))
+}
+
+fn cues_of(state: &AppState, name: &RoomName) -> Vec<crate::room::Cue> {
+    state
+        .hub
+        .get(name)
+        .map(|room| room.snapshot().rundown.cues)
+        .unwrap_or_default()
 }
 
 fn json(body: String) -> Response {
