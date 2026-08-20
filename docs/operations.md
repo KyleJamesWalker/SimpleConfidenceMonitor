@@ -21,9 +21,11 @@ phone reaches the stage display without anyone typing an address.
 A room name is 1 to 64 characters of `a-z`, `0-9`, dash and underscore, and the
 server lowercases what it gets. `api`, `assets` and `healthz` are reserved.
 
-A screen or an API read does not bring a room into being. A command or a
-connected socket does. Reading a room that does not exist answers with the
-defaults, so a typo in a URL leaves nothing behind.
+An API read does not bring a room into being, and reading a room that does not
+exist answers with the defaults. A command creates one, and so does a connected
+socket: opening a screen therefore creates the room a moment later, when its
+socket connects. A typo in a `curl` leaves nothing behind, a typo in a browser
+leaves an empty room.
 
 ## Flags
 

@@ -13,4 +13,7 @@ RUN chmod +x /usr/local/bin/simple-confidence-monitor
 USER scm
 EXPOSE 8080
 
-ENTRYPOINT ["/usr/local/bin/simple-confidence-monitor", "--port", "8080", "--state-dir", "/data"]
+ENV SCM_PORT=8080 \
+    SCM_STATE_DIR=/data
+
+ENTRYPOINT ["/usr/local/bin/simple-confidence-monitor"]

@@ -20,11 +20,11 @@ const SNAPSHOT_DEBOUNCE: Duration = Duration::from_secs(1);
 #[command(version, about, long_about = None)]
 struct Args {
     /// Port to listen on.
-    #[arg(short, long, default_value_t = 8080)]
+    #[arg(short, long, env = "SCM_PORT", default_value_t = 8080)]
     port: u16,
 
     /// Address to bind. Defaults to every interface so the stage display can reach it.
-    #[arg(short, long, default_value = "0.0.0.0")]
+    #[arg(short, long, env = "SCM_BIND", default_value = "0.0.0.0")]
     bind: IpAddr,
 
     /// Token required to open the operator console and to send commands.
@@ -32,11 +32,11 @@ struct Args {
     token: Option<String>,
 
     /// Directory for room snapshots. Without it, state stays in memory.
-    #[arg(short, long)]
+    #[arg(short, long, env = "SCM_STATE_DIR")]
     state_dir: Option<PathBuf>,
 
     /// Name to advertise on the local network. Defaults to the port.
-    #[arg(long)]
+    #[arg(long, env = "SCM_NAME")]
     name: Option<String>,
 
     /// Advertise the server over mDNS, so a phone can find it by name.

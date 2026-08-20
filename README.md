@@ -53,7 +53,8 @@ docker run --rm -p 8080:8080 -v scm-state:/data \
 ```
 
 The image serves on 8080 and keeps rooms in `/data`, so mount a volume there.
-Arguments after the image name are added to those.
+Those two come from `SCM_PORT` and `SCM_STATE_DIR` in the image, so an argument
+after the image name overrides them rather than colliding.
 
 The log prints the address to open. The picker at `/` builds the links for a room
 and shows a QR code for the stage display.
