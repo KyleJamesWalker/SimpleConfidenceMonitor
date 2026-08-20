@@ -1,1 +1,33 @@
-<h1>viewer</h1>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Confidence Monitor</title>
+    <link rel="stylesheet" href="/assets/viewer.css" />
+  </head>
+  <body>
+    <div class="stage" id="stage">
+      <header class="row top">
+        <div class="title" id="title"></div>
+        <div class="clock" id="clock"></div>
+      </header>
+
+      <main class="middle">
+        <div class="timer" id="timer">--:--</div>
+      </main>
+
+      <footer class="row bottom">
+        <div class="next" id="next"></div>
+        <div class="message" id="message"></div>
+      </footer>
+
+      <div class="progress" id="progress"><div class="bar" id="bar"></div></div>
+      <div class="status" id="status" hidden>reconnecting</div>
+      <button class="fullscreen" id="fullscreen" title="Fullscreen">⛶</button>
+      <div class="flash" id="flash"></div>
+      <div class="blackout" id="blackoutLayer"></div>
+    </div>
+    <script type="module" src="/assets/viewer.js"></script>
+  </body>
+</html>

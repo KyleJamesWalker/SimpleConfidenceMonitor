@@ -1,8 +1,12 @@
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use serde::{Deserialize, Serialize};
+use tokio::sync::broadcast;
 
+use crate::clock::now_ms;
 use crate::timer::{Mode, OnExpire, Timer};
+use crate::wire::ServerMsg;
 
 /// A validated room name, safe in a URL path and as a snapshot filename.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -111,10 +115,27 @@ impl RoomState {
     }
 }
 
+/// How many state frames a slow client may fall behind before it resynchronizes.
+const FRAME_BACKLOG: usize = 32;
+
 /// A live room. Shared across every connected client.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Room {
     state: Mutex<RoomState>,
+    frames: broadcast::Sender<String>,
+    viewers: AtomicUsize,
+    editors: AtomicUsize,
+}
+
+impl Default for Room {
+    fn default() -> Self {
+        Self {
+            state: Mutex::new(RoomState::default()),
+            frames: broadcast::channel(FRAME_BACKLOG).0,
+            viewers: AtomicUsize::new(0),
+            editors: AtomicUsize::new(0),
+        }
+    }
 }
 
 impl Room {
@@ -122,12 +143,59 @@ impl Room {
         self.state.lock().expect("room lock").clone()
     }
 
-    /// Applies a command and returns the state every client should now see.
+    pub fn subscribe(&self) -> broadcast::Receiver<String> {
+        self.frames.subscribe()
+    }
+
+    pub fn viewers(&self) -> usize {
+        self.viewers.load(Ordering::Relaxed)
+    }
+
+    pub fn editors(&self) -> usize {
+        self.editors.load(Ordering::Relaxed)
+    }
+
+    /// The current state as a wire frame, stamped with the server clock.
+    pub fn frame(&self) -> String {
+        let state = self.state.lock().expect("room lock");
+        let msg = ServerMsg::State {
+            server_time_ms: now_ms(),
+            viewers: self.viewers(),
+            editors: self.editors(),
+            state: &state,
+        };
+        serde_json::to_string(&msg).expect("state frame serializes")
+    }
+
+    /// Applies a command, tells every client, and returns the new state.
     pub fn apply(&self, cmd: &Command, now_ms: u64) -> RoomState {
-        let mut state = self.state.lock().expect("room lock");
-        if state.apply(cmd, now_ms) {
-            state.rev += 1;
-        }
-        state.clone()
+        let next = {
+            let mut state = self.state.lock().expect("room lock");
+            if state.apply(cmd, now_ms) {
+                state.rev += 1;
+            }
+            state.clone()
+        };
+        self.publish();
+        next
+    }
+
+    /// Sends the current state to every subscriber. A room with no client is a no-op.
+    pub fn publish(&self) {
+        let _ = self.frames.send(self.frame());
+    }
+
+    pub fn client_joined(&self, editor: bool) {
+        self.counter(editor).fetch_add(1, Ordering::Relaxed);
+        self.publish();
+    }
+
+    pub fn client_left(&self, editor: bool) {
+        self.counter(editor).fetch_sub(1, Ordering::Relaxed);
+        self.publish();
+    }
+
+    fn counter(&self, editor: bool) -> &AtomicUsize {
+        if editor { &self.editors } else { &self.viewers }
     }
 }
