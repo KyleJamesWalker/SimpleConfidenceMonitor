@@ -101,6 +101,15 @@ Two habits are worth keeping:
 
 `make lint` is the gate: `clippy` with warnings denied, and `cargo fmt --check`.
 
+CI installs the latest stable Rust, which is usually ahead of a local toolchain.
+Clippy gains lints with each release, so a local pass on an older toolchain does
+not prove a CI pass. Run `rustup update` before pushing, or check against the
+version CI reports:
+
+```bash
+cargo +1.97.1 clippy --all-targets -- -D warnings
+```
+
 Comments explain what the code cannot. A constraint, a trap for the next reader,
 or a rule that looks wrong until you know why. Rationale and history belong in
 the commit message, where `git log` and `git blame` can find them.

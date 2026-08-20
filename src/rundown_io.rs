@@ -74,11 +74,9 @@ pub fn parse_csv(body: &str) -> Result<Vec<CueDraft>, String> {
                 "title" => cue.title = value.to_string(),
                 "speaker" => cue.speaker = value.to_string(),
                 "notes" => cue.notes = value.to_string(),
-                "duration" => {
-                    if !value.is_empty() {
-                        cue.duration_ms = parse_duration(value)
-                            .ok_or_else(|| format!("line {line}: {value} is not a duration"))?;
-                    }
+                "duration" if !value.is_empty() => {
+                    cue.duration_ms = parse_duration(value)
+                        .ok_or_else(|| format!("line {line}: {value} is not a duration"))?;
                 }
                 _ => {}
             }
