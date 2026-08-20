@@ -6,6 +6,7 @@ pub mod hub;
 pub mod persist;
 pub mod room;
 pub mod routes;
+pub mod rundown_io;
 pub mod timer;
 pub mod wire;
 pub mod ws;

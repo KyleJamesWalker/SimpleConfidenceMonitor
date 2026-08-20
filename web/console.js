@@ -265,6 +265,28 @@ for (const button of document.querySelectorAll('.tone')) {
   });
 }
 
+el('exportCsv').href = `/api/rooms/${room}/rundown.csv`;
+el('exportJson').href = `/api/rooms/${room}/rundown.json`;
+
+el('importFile').addEventListener('change', async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const isJson = file.name.endsWith('.json');
+  try {
+    const response = await fetch(`/api/rooms/${room}/rundown`, {
+      method: 'POST',
+      headers: { 'content-type': isJson ? 'application/json' : 'text/csv' },
+      body: await file.text(),
+    });
+    if (!response.ok) {
+      toast(`Import failed: ${await response.text()}`);
+    }
+  } catch (error) {
+    toast(`Import failed: ${error.message}`);
+  }
+  event.target.value = '';
+});
+
 el('nextCue').addEventListener('click', () => send({ cmd: 'next_cue' }));
 el('prevCue').addEventListener('click', () => send({ cmd: 'prev_cue' }));
 

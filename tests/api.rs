@@ -265,3 +265,170 @@ async fn a_guarded_server_keeps_the_agenda_open() {
         .unwrap();
     assert_eq!(response.status(), 200);
 }
+
+async fn add_two_cues(addr: SocketAddr) {
+    for (title, ms) in [("Welcome", 300_000), ("Keynote", 1_800_000)] {
+        client()
+            .post(format!("http://{addr}/api/rooms/keynote/cmd"))
+            .json(&serde_json::json!({"cmd": "add_cue", "title": title, "duration_ms": ms}))
+            .send()
+            .await
+            .unwrap();
+    }
+}
+
+#[tokio::test]
+async fn the_rundown_exports_as_csv() {
+    let addr = open_server().await;
+    add_two_cues(addr).await;
+    let response = client()
+        .get(format!("http://{addr}/api/rooms/keynote/rundown.csv"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+    assert!(
+        response.headers()["content-type"]
+            .to_str()
+            .unwrap()
+            .contains("csv")
+    );
+    let disposition = response.headers()["content-disposition"]
+        .to_str()
+        .unwrap()
+        .to_string();
+    assert!(
+        disposition.contains("keynote-rundown.csv"),
+        "got {disposition}"
+    );
+    let body = response.text().await.unwrap();
+    assert!(
+        body.starts_with("title,speaker,duration,notes\n"),
+        "got {body}"
+    );
+    assert!(body.contains("Welcome,,5:00,"), "got {body}");
+}
+
+#[tokio::test]
+async fn the_rundown_exports_as_json() {
+    let addr = open_server().await;
+    add_two_cues(addr).await;
+    let body: serde_json::Value = client()
+        .get(format!("http://{addr}/api/rooms/keynote/rundown.json"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(body["cues"].as_array().unwrap().len(), 2);
+    assert_eq!(body["cues"][1]["title"], "Keynote");
+    assert_eq!(body["cues"][1]["duration_ms"], 1_800_000);
+}
+
+#[tokio::test]
+async fn a_csv_import_replaces_the_rundown() {
+    let addr = open_server().await;
+    add_two_cues(addr).await;
+    let response = client()
+        .post(format!("http://{addr}/api/rooms/keynote/rundown"))
+        .header("content-type", "text/csv")
+        .body("title,speaker,duration\nPanel,Alice,20:00\n")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+    let body: serde_json::Value = response.json().await.unwrap();
+    assert_eq!(body["rundown"]["cues"].as_array().unwrap().len(), 1);
+    assert_eq!(body["rundown"]["cues"][0]["title"], "Panel");
+    assert_eq!(body["rundown"]["cues"][0]["speaker"], "Alice");
+}
+
+#[tokio::test]
+async fn a_json_import_replaces_the_rundown() {
+    let addr = open_server().await;
+    let response = client()
+        .post(format!("http://{addr}/api/rooms/keynote/rundown"))
+        .json(&serde_json::json!({"cues": [{"title": "Panel", "duration_ms": 60_000}]}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+    let body: serde_json::Value = response.json().await.unwrap();
+    assert_eq!(body["rundown"]["cues"][0]["duration_ms"], 60_000);
+}
+
+#[tokio::test]
+async fn an_exported_rundown_imports_again() {
+    let addr = open_server().await;
+    add_two_cues(addr).await;
+    let csv = client()
+        .get(format!("http://{addr}/api/rooms/keynote/rundown.csv"))
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+    let body: serde_json::Value = client()
+        .post(format!("http://{addr}/api/rooms/breakout/rundown"))
+        .header("content-type", "text/csv")
+        .body(csv)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(body["rundown"]["cues"].as_array().unwrap().len(), 2);
+    assert_eq!(body["rundown"]["cues"][0]["title"], "Welcome");
+}
+
+#[tokio::test]
+async fn a_broken_import_is_refused_and_keeps_the_rundown() {
+    let addr = open_server().await;
+    add_two_cues(addr).await;
+    let response = client()
+        .post(format!("http://{addr}/api/rooms/keynote/rundown"))
+        .header("content-type", "text/csv")
+        .body("title,duration\nPanel,soon\n")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 400);
+    assert!(response.text().await.unwrap().contains("line 2"));
+
+    let body: serde_json::Value = client()
+        .get(format!("http://{addr}/api/rooms/keynote/rundown.json"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(body["cues"].as_array().unwrap().len(), 2);
+}
+
+#[tokio::test]
+async fn a_guarded_server_refuses_an_import_without_a_token() {
+    let addr = guarded_server().await;
+    let response = client()
+        .post(format!("http://{addr}/api/rooms/keynote/rundown"))
+        .header("content-type", "text/csv")
+        .body("title,duration\nPanel,20\n")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 401);
+}
+
+#[tokio::test]
+async fn a_guarded_server_keeps_the_export_open() {
+    let addr = guarded_server().await;
+    let response = client()
+        .get(format!("http://{addr}/api/rooms/keynote/rundown.csv"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+}

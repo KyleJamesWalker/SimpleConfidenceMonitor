@@ -80,6 +80,7 @@ state, so a caller can confirm the `rev` moved.
 | `set_on_expire` | `on_expire` | `count_negative` or `hold_at_zero` |
 | `message` | `text`, `tone`, `visible` | Note to the speaker. Every field is optional |
 | `send_preset` | `index` | Sends the quick message at that position |
+| `set_cues` | `cues` | Replaces the running order. Each cue takes `title`, `speaker`, `duration_ms`, `notes` |
 | `set_presets` | `presets` | Replaces the quick messages. Each carries `text` and `tone` |
 | `flash` | | Flashes the viewer twice |
 | `blackout` | `on` | Cuts the viewer to black |
@@ -94,8 +95,29 @@ state, so a caller can confirm the `rev` moved.
 | `GET` | `/api/rooms` | The names of the live rooms |
 | `GET` | `/api/rooms/<room>` | Room state, the same shape the socket sends |
 | `GET` | `/api/rooms/<room>/ws?role=view\|edit` | The live socket |
+| `GET` | `/api/rooms/<room>/rundown.csv` | The running order as CSV |
+| `GET` | `/api/rooms/<room>/rundown.json` | The running order as JSON |
+| `POST` | `/api/rooms/<room>/rundown` | Replaces the running order from CSV or JSON |
 | `GET` | `/api/qr?text=<url>` | An SVG QR code |
 | `GET` | `/healthz` | `ok` |
+
+### Importing a running order
+
+A rundown can come from a spreadsheet. Export the CSV, edit it, and post it
+back:
+
+```bash
+curl http://localhost:8080/api/rooms/keynote/rundown.csv -o rundown.csv
+curl -X POST http://localhost:8080/api/rooms/keynote/rundown \
+  -H 'content-type: text/csv' --data-binary @rundown.csv
+```
+
+The columns are `title`, `speaker`, `duration` and `notes`. A header row names
+them in any order, and common spellings map onto the same column, so `cue`,
+`presenter` and `length` work too. A duration takes minutes, `mm:ss` or
+`hh:mm:ss`, and an empty one falls back to five minutes. A row without a title
+is an error, and a refused import leaves the running order alone. The console
+carries the same import and export next to the cue list.
 
 ### Per-screen overrides
 

@@ -118,6 +118,14 @@
           <input id="cueMinutes" type="text" inputmode="numeric" placeholder="10:00" />
           <button type="submit">Add cue</button>
         </form>
+        <div class="io">
+          <a id="exportCsv" download>Export CSV</a>
+          <a id="exportJson" download>Export JSON</a>
+          <label class="importLabel">
+            Import
+            <input id="importFile" type="file" accept=".csv,.json,text/csv,application/json" />
+          </label>
+        </div>
         <div class="transport">
           <button id="prevCue">Previous</button>
           <button id="nextCue" class="primary">Next cue</button>

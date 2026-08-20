@@ -15,7 +15,7 @@ most, first.
       click on the viewer. Browser autoplay policy blocks it until then.
 - [x] **Agenda view.** A read-only `/<room>/agenda` page listing the rundown
       with planned clock times, for backstage and for the speakers.
-- [ ] **Rundown import and export.** CSV and JSON, both directions, so a
+- [x] **Rundown import and export.** CSV and JSON, both directions, so a
       running order can come from a spreadsheet.
 - [ ] **Scheduled start.** Start a cue at a wall clock time rather than on a
       press.

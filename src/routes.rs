@@ -13,7 +13,8 @@ use qrcode::render::svg;
 use crate::assets::Web;
 use crate::auth::{Auth, COOKIE, Outcome};
 use crate::hub::Hub;
-use crate::room::{Command, RoomName};
+use crate::room::{Command, CueDraft, RoomName};
+use crate::rundown_io::{parse_csv, to_csv};
 use crate::ws::{Role, serve_socket};
 
 /// Longest text the QR endpoint will encode. A room URL is far shorter.
@@ -54,6 +55,9 @@ pub fn router(state: AppState) -> Router {
         .route("/api/rooms", get(room_list))
         .route("/api/rooms/{room}", get(room_state))
         .route("/api/rooms/{room}/cmd", post(command))
+        .route("/api/rooms/{room}/rundown", post(import_rundown))
+        .route("/api/rooms/{room}/rundown.csv", get(export_csv))
+        .route("/api/rooms/{room}/rundown.json", get(export_json))
         .route("/api/rooms/{room}/ws", get(socket))
         .route("/{room}", get(viewer))
         .route("/{room}/edit", get(console))
@@ -142,6 +146,80 @@ async fn command(
     };
     let room = state.hub.get_or_create(&name);
     room.apply(&command, crate::clock::now_ms());
+    json(room.frame())
+}
+
+async fn export_csv(State(state): State<AppState>, Path(room): Path<String>) -> Response {
+    let name = match room_of(&state, &room) {
+        Ok(name) => name,
+        Err(response) => return *response,
+    };
+    let cues = state.hub.get_or_create(&name).snapshot().rundown.cues;
+    (
+        [
+            (header::CONTENT_TYPE, "text/csv; charset=utf-8".to_string()),
+            (
+                header::CONTENT_DISPOSITION,
+                format!("attachment; filename=\"{name}-rundown.csv\""),
+            ),
+        ],
+        to_csv(&cues),
+    )
+        .into_response()
+}
+
+async fn export_json(State(state): State<AppState>, Path(room): Path<String>) -> Response {
+    let name = match room_of(&state, &room) {
+        Ok(name) => name,
+        Err(response) => return *response,
+    };
+    let cues = state.hub.get_or_create(&name).snapshot().rundown.cues;
+    json(serde_json::json!({ "cues": cues }).to_string())
+}
+
+#[derive(serde::Deserialize)]
+struct RundownBody {
+    cues: Vec<CueDraft>,
+}
+
+/// Replaces a running order from CSV or JSON, chosen by the content type.
+async fn import_rundown(
+    State(state): State<AppState>,
+    Path(room): Path<String>,
+    Query(params): Query<HashMap<String, String>>,
+    headers: HeaderMap,
+    body: String,
+) -> Response {
+    let name = match room_of(&state, &room) {
+        Ok(name) => name,
+        Err(response) => return *response,
+    };
+    if state
+        .auth
+        .check(&headers, params.get("token").map(String::as_str))
+        == Outcome::Denied
+    {
+        return denied();
+    }
+    let is_json = headers
+        .get(header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| value.contains("json"));
+
+    let cues = if is_json {
+        match serde_json::from_str::<RundownBody>(&body) {
+            Ok(parsed) => parsed.cues,
+            Err(err) => return (StatusCode::BAD_REQUEST, err.to_string()).into_response(),
+        }
+    } else {
+        match parse_csv(&body) {
+            Ok(cues) => cues,
+            Err(err) => return (StatusCode::BAD_REQUEST, err).into_response(),
+        }
+    };
+
+    let room = state.hub.get_or_create(&name);
+    room.apply(&Command::SetCues { cues }, crate::clock::now_ms());
     json(room.frame())
 }
 

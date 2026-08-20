@@ -164,6 +164,23 @@ pub struct Cue {
     pub notes: String,
 }
 
+/// A cue as it arrives from an import or an API caller, before it has an id.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CueDraft {
+    #[serde(default)]
+    pub title: String,
+    #[serde(default)]
+    pub speaker: String,
+    #[serde(default = "default_cue_ms")]
+    pub duration_ms: u64,
+    #[serde(default)]
+    pub notes: String,
+}
+
+fn default_cue_ms() -> u64 {
+    DEFAULT_CUE_MS
+}
+
 /// The running order. An id is never reused, so a stale console cannot load
 /// the wrong cue after a removal.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -294,6 +311,9 @@ pub enum Command {
     },
     SetPresets {
         presets: Vec<Preset>,
+    },
+    SetCues {
+        cues: Vec<CueDraft>,
     },
 }
 
@@ -456,6 +476,26 @@ impl RoomState {
                 let changed = self.rundown.auto_advance != *on;
                 self.rundown.auto_advance = *on;
                 changed
+            }
+            Command::SetCues { cues } => {
+                self.rundown.cues = cues
+                    .iter()
+                    .map(|draft| Cue {
+                        id: self.rundown.take_id(),
+                        title: draft.title.clone(),
+                        speaker: draft.speaker.clone(),
+                        duration_ms: draft.duration_ms,
+                        notes: draft.notes.clone(),
+                    })
+                    .collect();
+                if self
+                    .rundown
+                    .active
+                    .is_some_and(|id| self.rundown.position_of(id).is_none())
+                {
+                    self.rundown.active = None;
+                }
+                true
             }
             Command::SendPreset { index } => {
                 let Some(preset) = self.presets.get(*index).cloned() else {
