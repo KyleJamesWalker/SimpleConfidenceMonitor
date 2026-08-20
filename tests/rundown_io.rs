@@ -221,3 +221,41 @@ fn parses_the_set_cues_command() {
         }
     );
 }
+
+#[test]
+fn a_field_holding_a_newline_survives_a_round_trip() {
+    let room = Room::default();
+    room.apply(
+        &Command::SetCues {
+            cues: vec![CueDraft {
+                title: "Keynote".into(),
+                speaker: "Alice".into(),
+                duration_ms: 30 * MIN,
+                notes: "line one\nline two".into(),
+            }],
+        },
+        T0,
+    );
+    let csv = to_csv(&room.snapshot().rundown.cues);
+
+    let back = parse_csv(&csv).unwrap();
+    assert_eq!(back.len(), 1, "a quoted newline must not split the row: {csv:?}");
+    assert_eq!(back[0].title, "Keynote");
+    assert_eq!(back[0].notes, "line one\nline two");
+}
+
+#[test]
+fn a_quoted_newline_in_the_middle_of_a_document_reads_as_one_row() {
+    let csv = "title,speaker,duration,notes\n\"Panel\",Alice,20,\"first\nsecond\"\nBreak,,10,\n";
+    let cues = parse_csv(csv).unwrap();
+    assert_eq!(cues.len(), 2);
+    assert_eq!(cues[0].notes, "first\nsecond");
+    assert_eq!(cues[1].title, "Break");
+}
+
+#[test]
+fn a_line_number_in_an_error_points_at_the_row_start() {
+    let csv = "title,duration\n\"Panel\nwith a newline\",20\nBroken,soon\n";
+    let error = parse_csv(csv).unwrap_err();
+    assert!(error.contains("line 4"), "got {error}");
+}

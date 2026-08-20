@@ -33,13 +33,8 @@ const HEADER: &str = "title,speaker,duration,notes";
 /// Reads a running order. A header row names the columns, and its absence
 /// means the default order.
 pub fn parse_csv(body: &str) -> Result<Vec<CueDraft>, String> {
-    let mut rows = Vec::new();
-    for (index, line) in body.lines().enumerate() {
-        if line.trim().is_empty() {
-            continue;
-        }
-        rows.push((index + 1, split_row(line)));
-    }
+    let mut rows = split_rows(body);
+    rows.retain(|(_, fields)| fields.iter().any(|field| !field.trim().is_empty()));
     if rows.is_empty() {
         return Err("the document holds no rows".to_string());
     }
@@ -140,12 +135,19 @@ fn column_name(raw: &str) -> &'static str {
     }
 }
 
-/// Splits one line on commas, honoring quotes and doubled quotes.
-fn split_row(line: &str) -> Vec<String> {
+/// Splits a document into rows of fields, honoring quotes and doubled quotes.
+/// A quoted field may hold a newline, which is how a note with two lines
+/// survives a round trip through a spreadsheet. Each row carries the line it
+/// starts on, so an error points at the right place in a text editor.
+fn split_rows(body: &str) -> Vec<(usize, Vec<String>)> {
+    let mut rows = Vec::new();
     let mut fields = Vec::new();
     let mut field = String::new();
     let mut quoted = false;
-    let mut chars = line.chars().peekable();
+    let mut line = 1;
+    let mut row_line = 1;
+    let mut chars = body.chars().peekable();
+
     while let Some(c) = chars.next() {
         match c {
             '"' if quoted && chars.peek() == Some(&'"') => {
@@ -154,9 +156,25 @@ fn split_row(line: &str) -> Vec<String> {
             }
             '"' => quoted = !quoted,
             ',' if !quoted => fields.push(std::mem::take(&mut field)),
-            _ => field.push(c),
+            '\r' if !quoted && chars.peek() == Some(&'\n') => {}
+            '\n' if !quoted => {
+                fields.push(std::mem::take(&mut field));
+                rows.push((row_line, std::mem::take(&mut fields)));
+                line += 1;
+                row_line = line;
+            }
+            _ => {
+                if c == '\n' {
+                    line += 1;
+                }
+                field.push(c);
+            }
         }
     }
-    fields.push(field);
-    fields
+
+    if !field.is_empty() || !fields.is_empty() {
+        fields.push(field);
+        rows.push((row_line, fields));
+    }
+    rows
 }
