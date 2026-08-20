@@ -6,6 +6,11 @@ next. Each item is one commit.
 Ordering follows operator value: what a person running a session reaches for
 most, first.
 
+Everything below is done. A release build passed a live check of the auth
+gates, the CSV round trip, snapshot restore across a restart, and room
+deletion. `make soak` measured the clock offset at 0.11ms mean and 1.5ms
+spread on loopback. Add new work under the heading it belongs to.
+
 ## Features
 
 - [x] **Message presets.** Named quick messages on the console, one press to
