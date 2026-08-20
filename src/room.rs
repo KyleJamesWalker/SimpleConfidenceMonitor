@@ -315,6 +315,10 @@ pub enum Command {
     SetCues {
         cues: Vec<CueDraft>,
     },
+    ScheduleStart {
+        #[serde(default)]
+        at_ms: Option<u64>,
+    },
 }
 
 impl RoomState {
@@ -477,6 +481,7 @@ impl RoomState {
                 self.rundown.auto_advance = *on;
                 changed
             }
+            Command::ScheduleStart { at_ms } => self.timer.schedule_start(*at_ms),
             Command::SetCues { cues } => {
                 self.rundown.cues = cues
                     .iter()
@@ -543,6 +548,7 @@ impl RoomState {
         self.timer.duration_ms = cue.duration_ms;
         self.timer.run = Run::Stopped;
         self.timer.elapsed_ms = 0;
+        self.timer.start_at_ms = None;
         self.display.title = cue.title;
         self.display.next_up = next_title;
         true

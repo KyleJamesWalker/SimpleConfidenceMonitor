@@ -153,6 +153,19 @@ export function parseDuration(raw) {
   return parts.map(Number).reduce((total, part) => total * 60 + part, 0) * 1000;
 }
 
+// The next occurrence of a wall clock time. Today when it is still ahead,
+// tomorrow otherwise, so an operator never arms a start that already passed.
+export function nextClockTime(raw, nowMs) {
+  const parts = String(raw).trim().split(':');
+  if (parts.length > 3 || parts.some((part) => !/^\d{1,2}$/.test(part))) return null;
+  const [hours, minutes = 0, seconds = 0] = parts.map(Number);
+  if (hours > 23 || minutes > 59 || seconds > 59) return null;
+  const now = new Date(nowMs);
+  const at = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, seconds, 0);
+  if (at.getTime() <= nowMs) at.setDate(at.getDate() + 1);
+  return at.getTime();
+}
+
 // Clock times for a rundown. The active cue anchors on the wall clock, and the
 // rest chain from it. An overrunning cue chains the rest from now, because a
 // cue cannot start in the past.

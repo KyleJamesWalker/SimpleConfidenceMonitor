@@ -270,3 +270,14 @@ body {
  transition: none;
  }
 }
+
+.armed {
+  font-size: calc(min(3vh, 2.4vw) * var(--scale));
+  color: var(--warn);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.armed[hidden] {
+  display: none;
+}

@@ -78,6 +78,7 @@ state, so a caller can confirm the `rev` moved.
 | `set_mode` | `mode` | `countdown`, `count_up` or `time_of_day` |
 | `set_thresholds` | `warn_ms`, `danger_ms` | Amber and red points. Zero turns one off |
 | `set_on_expire` | `on_expire` | `count_negative` or `hold_at_zero` |
+| `schedule_start` | `at_ms` | Starts the timer at that epoch millisecond. Omit `at_ms` to cancel |
 | `message` | `text`, `tone`, `visible` | Note to the speaker. Every field is optional |
 | `send_preset` | `index` | Sends the quick message at that position |
 | `set_cues` | `cues` | Replaces the running order. Each cue takes `title`, `speaker`, `duration_ms`, `notes` |
@@ -100,6 +101,21 @@ state, so a caller can confirm the `rev` moved.
 | `POST` | `/api/rooms/<room>/rundown` | Replaces the running order from CSV or JSON |
 | `GET` | `/api/qr?text=<url>` | An SVG QR code |
 | `GET` | `/healthz` | `ok` |
+
+### Starting at a clock time
+
+A cue can wait for the clock instead of a press. Arm a time on the console, or
+post the epoch millisecond:
+
+```bash
+curl -X POST http://localhost:8080/api/rooms/keynote/cmd \
+  -H 'content-type: application/json' \
+  -d '{"cmd": "schedule_start", "at_ms": 1767225600000}'
+```
+
+The timer waits at the top and the viewer counts down to the start. Starting by
+hand, resetting, or loading a cue all cancel a pending start. A time already
+past starts within a fifth of a second.
 
 ### Importing a running order
 

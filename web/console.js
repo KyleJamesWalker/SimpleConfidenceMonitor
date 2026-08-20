@@ -1,7 +1,9 @@
 import {
   MIN,
   RoomSocket,
+  formatClock,
   formatDuration,
+  nextClockTime,
   parseDuration,
   readout,
   roomFromPath,
@@ -68,7 +70,7 @@ function syncField(id, serverValue) {
   node.value = serverValue;
 }
 
-for (const id of ['title', 'nextUp', 'message', 'warn', 'danger', 'duration']) {
+for (const id of ['title', 'nextUp', 'message', 'warn', 'danger', 'duration', 'startAt']) {
   el(id).addEventListener('input', () => drafts.add(id));
 }
 
@@ -98,9 +100,19 @@ function applyState(frame) {
     el(id).classList.toggle('on', Boolean(read(frame)));
   }
   el('showMessage').classList.toggle('on', message.visible && Boolean(message.text));
+  drawArmed(frame);
   drawPresets(frame);
   drawRundown(frame);
   render();
+}
+
+function drawArmed(frame) {
+  const at = frame.timer.start_at_ms;
+  el('armed').hidden = !at;
+  if (at) {
+    const clock = formatClock(new Date(at), frame.display.clock_24h);
+    el('armed').textContent = `Starts at ${clock}`;
+  }
 }
 
 function drawPresets(frame) {
@@ -286,6 +298,19 @@ el('importFile').addEventListener('change', async (event) => {
   }
   event.target.value = '';
 });
+
+el('arm').addEventListener('click', () => {
+  const at = nextClockTime(el('startAt').value, socket.serverNow());
+  if (at === null) {
+    toast('Start time takes hh:mm on a 24 hour clock');
+    return;
+  }
+  send({ cmd: 'schedule_start', at_ms: at });
+  el('startAt').value = '';
+  drafts.delete('startAt');
+});
+
+el('disarm').addEventListener('click', () => send({ cmd: 'schedule_start', at_ms: null }));
 
 el('nextCue').addEventListener('click', () => send({ cmd: 'next_cue' }));
 el('prevCue').addEventListener('click', () => send({ cmd: 'prev_cue' }));

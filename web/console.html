@@ -61,6 +61,15 @@
           </label>
         </div>
         <label class="field">
+          <span>Start at (clock time)</span>
+          <span class="armRow">
+            <input id="startAt" type="text" inputmode="numeric" placeholder="14:00" />
+            <button id="arm" type="button">Arm</button>
+            <button id="disarm" type="button">Clear</button>
+          </span>
+        </label>
+        <div class="armed" id="armed" hidden></div>
+        <label class="field">
           <span>Past zero</span>
           <select id="onExpire">
             <option value="count_negative">Count into overtime</option>

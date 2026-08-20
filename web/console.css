@@ -421,3 +421,26 @@ kbd {
   font-size: 0.8rem;
   color: var(--dim);
 }
+
+.armRow {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.armRow input {
+  flex: 1 1 auto;
+}
+
+.armRow button {
+  flex: 0 0 auto;
+}
+
+.armed {
+  color: var(--warn);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.armed[hidden] {
+  display: none;
+}

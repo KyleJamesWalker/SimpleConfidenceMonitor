@@ -20,6 +20,7 @@ const el = {
   flash: document.getElementById('flash'),
   fullscreen: document.getElementById('fullscreen'),
   soundHint: document.getElementById('soundHint'),
+  armed: document.getElementById('armed'),
 };
 
 const params = new URLSearchParams(location.search);
@@ -128,6 +129,14 @@ function render() {
   } else if (painted.clock !== '') {
     el.clock.textContent = '';
     painted.clock = '';
+  }
+
+  const armedAt = state.timer.start_at_ms;
+  const armedText = armedAt && !out.running ? `starts in ${formatDuration(armedAt - now)}` : '';
+  if (painted.armed !== armedText) {
+    el.armed.textContent = armedText;
+    el.armed.hidden = !armedText;
+    painted.armed = armedText;
   }
 
   const stale = offlineSince && Date.now() - offlineSince > 5000;

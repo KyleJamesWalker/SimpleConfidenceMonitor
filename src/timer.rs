@@ -58,6 +58,9 @@ pub struct Timer {
     pub warn_ms: u64,
     pub danger_ms: u64,
     pub on_expire: OnExpire,
+    /// Wall clock time the autopilot starts this timer, if an operator armed one.
+    #[serde(default)]
+    pub start_at_ms: Option<u64>,
 }
 
 pub const DEFAULT_DURATION_MS: u64 = 15 * 60 * 1000;
@@ -74,6 +77,7 @@ impl Default for Timer {
             warn_ms: DEFAULT_WARN_MS,
             danger_ms: DEFAULT_DANGER_MS,
             on_expire: OnExpire::default(),
+            start_at_ms: None,
         }
     }
 }
@@ -134,8 +138,9 @@ impl Timer {
     }
 
     pub fn start(&mut self, now_ms: u64) -> bool {
+        let armed = self.start_at_ms.take().is_some();
         if self.is_running() {
-            return false;
+            return armed;
         }
         self.run = Run::Running { since_ms: now_ms };
         true
@@ -151,12 +156,24 @@ impl Timer {
     }
 
     pub fn reset(&mut self) -> bool {
+        let armed = self.start_at_ms.take().is_some();
         if self.run == Run::Stopped && self.elapsed_ms == 0 {
-            return false;
+            return armed;
         }
         self.run = Run::Stopped;
         self.elapsed_ms = 0;
         true
+    }
+
+    /// Arms a wall clock start, or clears one. The timer waits at the top.
+    pub fn schedule_start(&mut self, at_ms: Option<u64>) -> bool {
+        let changed = self.start_at_ms != at_ms || self.is_running() || self.elapsed_ms != 0;
+        self.start_at_ms = at_ms;
+        if at_ms.is_some() {
+            self.run = Run::Stopped;
+            self.elapsed_ms = 0;
+        }
+        changed
     }
 
     pub fn set_duration(&mut self, ms: u64) -> bool {

@@ -17,7 +17,7 @@ most, first.
       with planned clock times, for backstage and for the speakers.
 - [x] **Rundown import and export.** CSV and JSON, both directions, so a
       running order can come from a spreadsheet.
-- [ ] **Scheduled start.** Start a cue at a wall clock time rather than on a
+- [x] **Scheduled start.** Start a cue at a wall clock time rather than on a
       press.
 - [ ] **Auxiliary timer.** A second independent countdown, for a break or a
       hard stop, shown alongside the main timer.
