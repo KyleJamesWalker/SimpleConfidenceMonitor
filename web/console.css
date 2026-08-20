@@ -444,3 +444,29 @@ kbd {
 .armed[hidden] {
   display: none;
 }
+
+.auxRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.auxReadout {
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.auxReadout.warn {
+  color: var(--warn);
+}
+
+.auxReadout.danger,
+.auxReadout.expired {
+  color: var(--danger);
+}
+
+.auxRow button {
+  flex: 0 0 auto;
+}

@@ -79,6 +79,10 @@ state, so a caller can confirm the `rev` moved.
 | `set_thresholds` | `warn_ms`, `danger_ms` | Amber and red points. Zero turns one off |
 | `set_on_expire` | `on_expire` | `count_negative` or `hold_at_zero` |
 | `schedule_start` | `at_ms` | Starts the timer at that epoch millisecond. Omit `at_ms` to cancel |
+| `aux_start`, `aux_pause`, `aux_reset` | | Transport for the second timer |
+| `aux_set_duration` | `ms` | Sets the second timer |
+| `aux_adjust` | `ms` | Adds or removes time on the second timer |
+| `aux_set` | `label`, `visible` | Names the second timer and shows or hides it |
 | `message` | `text`, `tone`, `visible` | Note to the speaker. Every field is optional |
 | `send_preset` | `index` | Sends the quick message at that position |
 | `set_cues` | `cues` | Replaces the running order. Each cue takes `title`, `speaker`, `duration_ms`, `notes` |
@@ -101,6 +105,13 @@ state, so a caller can confirm the `rev` moved.
 | `POST` | `/api/rooms/<room>/rundown` | Replaces the running order from CSV or JSON |
 | `GET` | `/api/qr?text=<url>` | An SVG QR code |
 | `GET` | `/healthz` | `ok` |
+
+### The second timer
+
+A room carries a second countdown beside the main one, for a break or a hard
+stop. It runs on its own clock, so a break can count down while the session
+timer keeps running. Give it a label, show it, and the viewer puts it under the
+main readout. `?aux=0` hides it on one screen.
 
 ### Starting at a clock time
 
@@ -144,7 +155,8 @@ monitor differ from the stage feed without touching the room:
 /keynote?clock=0&progress=0&mirror=1
 ```
 
-`clock`, `progress`, `mirror`, `blackout` and `sound` each take `1` or `0`. Use
+`clock`, `progress`, `mirror`, `blackout`, `sound` and `aux` each take `1` or
+`0`. Use
 `mirror` for a display behind teleprompter glass.
 
 `chime` sounds a tone when the timer reaches zero. It starts off, and one screen

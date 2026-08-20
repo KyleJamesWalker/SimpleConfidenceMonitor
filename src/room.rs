@@ -128,6 +128,32 @@ impl Default for Display {
     }
 }
 
+/// A second countdown, for a break or a hard stop. It runs beside the main
+/// timer and shares its readout math.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Aux {
+    pub label: String,
+    pub visible: bool,
+    pub timer: Timer,
+}
+
+pub const DEFAULT_AUX_MS: u64 = 10 * 60 * 1000;
+
+impl Default for Aux {
+    fn default() -> Self {
+        Self {
+            label: String::new(),
+            visible: false,
+            timer: Timer {
+                duration_ms: DEFAULT_AUX_MS,
+                warn_ms: 0,
+                danger_ms: 0,
+                ..Timer::default()
+            },
+        }
+    }
+}
+
 /// A message an operator sends with one press.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Preset {
@@ -228,6 +254,8 @@ pub struct RoomState {
     /// A snapshot from before presets existed comes back with the defaults.
     #[serde(default = "default_presets")]
     pub presets: Vec<Preset>,
+    #[serde(default)]
+    pub aux: Aux,
 }
 
 impl Default for RoomState {
@@ -239,6 +267,7 @@ impl Default for RoomState {
             display: Display::default(),
             rundown: Rundown::default(),
             presets: default_presets(),
+            aux: Aux::default(),
         }
     }
 }
@@ -326,6 +355,19 @@ pub enum Command {
     ScheduleStart {
         #[serde(default)]
         at_ms: Option<u64>,
+    },
+    AuxStart,
+    AuxPause,
+    AuxReset,
+    AuxSetDuration {
+        ms: u64,
+    },
+    AuxAdjust {
+        ms: i64,
+    },
+    AuxSet {
+        label: Option<String>,
+        visible: Option<bool>,
     },
 }
 
@@ -490,6 +532,21 @@ impl RoomState {
                 changed
             }
             Command::ScheduleStart { at_ms } => self.timer.schedule_start(*at_ms),
+            Command::AuxStart => self.aux.timer.start(now_ms),
+            Command::AuxPause => self.aux.timer.pause(now_ms),
+            Command::AuxReset => self.aux.timer.reset(),
+            Command::AuxSetDuration { ms } => self.aux.timer.set_duration(*ms),
+            Command::AuxAdjust { ms } => self.aux.timer.adjust(*ms),
+            Command::AuxSet { label, visible } => {
+                let before = self.aux.clone();
+                if let Some(label) = label {
+                    self.aux.label = label.clone();
+                }
+                if let Some(visible) = visible {
+                    self.aux.visible = *visible;
+                }
+                before != self.aux
+            }
             Command::SetCues { cues } => {
                 self.rundown.cues = cues
                     .iter()

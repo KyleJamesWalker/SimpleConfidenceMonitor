@@ -25,6 +25,7 @@ const TOGGLES = {
   mirror: (on) => ({ cmd: 'display', mirror: on }),
   chime: (on) => ({ cmd: 'display', chime: on }),
   autoAdvance: (on) => ({ cmd: 'set_auto_advance', on }),
+  auxVisible: (on) => ({ cmd: 'aux_set', visible: on }),
 };
 const TOGGLE_STATE = {
   blackout: (frame) => frame.display.blackout,
@@ -34,6 +35,7 @@ const TOGGLE_STATE = {
   mirror: (frame) => frame.display.mirror,
   chime: (frame) => frame.display.chime,
   autoAdvance: (frame) => frame.rundown.auto_advance,
+  auxVisible: (frame) => frame.aux.visible,
 };
 
 let state = null;
@@ -70,7 +72,7 @@ function syncField(id, serverValue) {
   node.value = serverValue;
 }
 
-for (const id of ['title', 'nextUp', 'message', 'warn', 'danger', 'duration', 'startAt']) {
+for (const id of ['title', 'nextUp', 'message', 'warn', 'danger', 'duration', 'startAt', 'auxLabel']) {
   el(id).addEventListener('input', () => drafts.add(id));
 }
 
@@ -87,6 +89,7 @@ function applyState(frame) {
   syncField('title', display.title);
   syncField('nextUp', display.next_up);
   syncField('message', message.text);
+  syncField('auxLabel', frame.aux.label);
   if (!editing('scale')) {
     el('scale').value = display.scale;
     el('scaleOut').textContent = `${display.scale}%`;
@@ -186,7 +189,15 @@ function action(label, onClick) {
 
 function render() {
   if (state) {
-    const out = readout(state.timer, socket.serverNow());
+    const now = socket.serverNow();
+    const auxOut = readout(state.aux.timer, now);
+    const auxText = formatDuration(auxOut.valueMs);
+    if (painted.aux !== auxText) {
+      el('auxReadout').textContent = auxText;
+      el('auxReadout').className = `auxReadout ${auxOut.phase}`;
+      painted.aux = auxText;
+    }
+    const out = readout(state.timer, now);
     const text = formatDuration(out.valueMs);
     if (painted.timer !== text) {
       el('timer').textContent = text;
@@ -298,6 +309,23 @@ el('importFile').addEventListener('change', async (event) => {
   }
   event.target.value = '';
 });
+
+el('auxStart').addEventListener('click', () => send({ cmd: 'aux_start' }));
+el('auxPause').addEventListener('click', () => send({ cmd: 'aux_pause' }));
+el('auxReset').addEventListener('click', () => send({ cmd: 'aux_reset' }));
+el('auxLabel').addEventListener('input', (event) => {
+  const label = event.target.value;
+  clearTimeout(el('auxLabel').timer);
+  el('auxLabel').timer = setTimeout(() => send({ cmd: 'aux_set', label }), 250);
+});
+
+for (const minutes of [5, 10, 15]) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = `${minutes}m`;
+  button.addEventListener('click', () => send({ cmd: 'aux_set_duration', ms: minutes * MIN }));
+  el('auxChips').append(button);
+}
 
 el('arm').addEventListener('click', () => {
   const at = nextClockTime(el('startAt').value, socket.serverNow());

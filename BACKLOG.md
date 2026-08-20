@@ -19,7 +19,7 @@ most, first.
       running order can come from a spreadsheet.
 - [x] **Scheduled start.** Start a cue at a wall clock time rather than on a
       press.
-- [ ] **Auxiliary timer.** A second independent countdown, for a break or a
+- [x] **Auxiliary timer.** A second independent countdown, for a break or a
       hard stop, shown alongside the main timer.
 - [ ] **GET command endpoint.** `GET /api/rooms/<room>/cmd?cmd=start` for
       hardware controllers that can only issue a GET.

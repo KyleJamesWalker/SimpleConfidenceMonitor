@@ -61,8 +61,10 @@ body {
 }
 
 .middle {
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   min-height: 0;
 }
 
@@ -280,4 +282,37 @@ body {
 
 .armed[hidden] {
   display: none;
+}
+
+.aux {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  margin-top: 1vh;
+  font-size: calc(min(7vh, 5vw) * var(--scale));
+  font-variant-numeric: tabular-nums;
+}
+
+.aux[hidden] {
+  display: none;
+}
+
+.auxLabel {
+  color: var(--dim);
+  font-size: 0.55em;
+  letter-spacing: 0.02em;
+}
+
+.auxTime {
+  font-weight: 600;
+  color: var(--dim);
+}
+
+.auxTime.warn {
+  color: var(--warn);
+}
+
+.auxTime.danger,
+.auxTime.expired {
+  color: var(--danger);
 }

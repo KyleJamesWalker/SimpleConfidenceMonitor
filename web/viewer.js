@@ -21,6 +21,9 @@ const el = {
   fullscreen: document.getElementById('fullscreen'),
   soundHint: document.getElementById('soundHint'),
   armed: document.getElementById('armed'),
+  aux: document.getElementById('aux'),
+  auxLabel: document.getElementById('auxLabel'),
+  auxTime: document.getElementById('auxTime'),
 };
 
 const params = new URLSearchParams(location.search);
@@ -129,6 +132,26 @@ function render() {
   } else if (painted.clock !== '') {
     el.clock.textContent = '';
     painted.clock = '';
+  }
+
+  const aux = state.aux;
+  const showAux = pick('aux', aux?.visible);
+  if (painted.showAux !== showAux) {
+    el.aux.hidden = !showAux;
+    painted.showAux = showAux;
+  }
+  if (showAux) {
+    const auxOut = readout(aux.timer, now);
+    const auxText = formatDuration(auxOut.valueMs);
+    if (painted.auxTime !== auxText) {
+      el.auxTime.textContent = auxText;
+      el.auxTime.className = `auxTime ${auxOut.phase}`;
+      painted.auxTime = auxText;
+    }
+    if (painted.auxLabel !== aux.label) {
+      el.auxLabel.textContent = aux.label;
+      painted.auxLabel = aux.label;
+    }
   }
 
   const armedAt = state.timer.start_at_ms;

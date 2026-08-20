@@ -118,6 +118,24 @@
         </label>
       </section>
 
+      <section class="panel">
+        <h2>Aux timer</h2>
+        <div class="auxRow">
+          <span class="auxReadout" id="auxReadout">--:--</span>
+          <button id="auxVisible" data-toggle>Show</button>
+        </div>
+        <label class="field">
+          <span>Label</span>
+          <input id="auxLabel" type="text" placeholder="Break" />
+        </label>
+        <div class="chips" id="auxChips"></div>
+        <div class="transport">
+          <button id="auxStart" class="primary">Start</button>
+          <button id="auxPause">Pause</button>
+          <button id="auxReset">Reset</button>
+        </div>
+      </section>
+
       <section class="panel rundown">
         <h2>Rundown <span id="totals" class="totals"></span></h2>
         <ol class="cues" id="cues"></ol>
