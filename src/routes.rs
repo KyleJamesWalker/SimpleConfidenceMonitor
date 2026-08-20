@@ -104,7 +104,7 @@ async fn console(
         .check(&headers, params.get("token").map(String::as_str))
     {
         Outcome::Allowed { store_cookie } => page("console.html", store_cookie),
-        Outcome::Denied => denied(),
+        Outcome::Denied => unlock_page(),
     }
 }
 
@@ -404,6 +404,14 @@ fn cues_of(state: &AppState, name: &RoomName) -> Vec<crate::room::Cue> {
 
 fn json(body: String) -> Response {
     ([(header::CONTENT_TYPE, "application/json")], body).into_response()
+}
+
+/// A browser asking for the console gets a form rather than a dead end. An API
+/// caller keeps the plain refusal below.
+fn unlock_page() -> Response {
+    let mut response = page("unlock.html", None);
+    *response.status_mut() = StatusCode::UNAUTHORIZED;
+    response
 }
 
 fn denied() -> Response {

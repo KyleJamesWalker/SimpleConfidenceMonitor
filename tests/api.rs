@@ -694,3 +694,87 @@ async fn a_write_still_creates_the_room() {
         .unwrap();
     assert_eq!(body["rooms"], serde_json::json!(["keynote"]));
 }
+
+#[tokio::test]
+async fn the_console_offers_a_form_instead_of_a_dead_end() {
+    let addr = guarded_server().await;
+    let response = client()
+        .get(format!("http://{addr}/keynote/edit"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 401, "still a refusal");
+    let kind = response.headers()["content-type"]
+        .to_str()
+        .unwrap()
+        .to_string();
+    assert!(kind.contains("text/html"), "got {kind}");
+    let body = response.text().await.unwrap();
+    assert!(body.contains("<form"), "the page should carry a form");
+    assert!(
+        body.contains(r#"name="token""#),
+        "the form should ask for the token"
+    );
+}
+
+#[tokio::test]
+async fn a_wrong_token_returns_the_form_again() {
+    let addr = guarded_server().await;
+    let response = client()
+        .get(format!("http://{addr}/keynote/edit?token=nope"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 401);
+    assert!(response.text().await.unwrap().contains("<form"));
+}
+
+#[tokio::test]
+async fn the_form_hands_off_to_the_console_and_sets_the_cookie() {
+    let addr = guarded_server().await;
+    let response = client()
+        .get(format!("http://{addr}/keynote/edit?token=s3cret"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+    assert!(
+        response.headers().contains_key("set-cookie"),
+        "the console should remember the token"
+    );
+    assert!(response.text().await.unwrap().contains("Operator console"));
+}
+
+#[tokio::test]
+async fn an_api_caller_still_gets_a_plain_refusal() {
+    let addr = guarded_server().await;
+    for (method, path) in [
+        ("POST", "/api/rooms/keynote/cmd"),
+        ("GET", "/api/rooms/keynote/cmd?cmd=start"),
+        ("DELETE", "/api/rooms/keynote"),
+    ] {
+        let request = match method {
+            "POST" => client()
+                .post(format!("http://{addr}{path}"))
+                .json(&serde_json::json!({"cmd":"start"})),
+            "DELETE" => client().delete(format!("http://{addr}{path}")),
+            _ => client().get(format!("http://{addr}{path}")),
+        };
+        let response = request.send().await.unwrap();
+        assert_eq!(response.status(), 401, "{path}");
+        let body = response.text().await.unwrap();
+        assert!(!body.contains("<form"), "{path} should not serve a page");
+    }
+}
+
+#[tokio::test]
+async fn an_open_server_never_shows_the_form() {
+    let addr = open_server().await;
+    let response = client()
+        .get(format!("http://{addr}/keynote/edit"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+    assert!(response.text().await.unwrap().contains("Operator console"));
+}

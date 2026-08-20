@@ -42,8 +42,14 @@ Started without `--token`, the server logs a warning and leaves the console
 open. Viewer routes never ask for the token, because a display machine in a
 booth cannot type one.
 
-The console takes the token from `?token=<value>` once and keeps it in an
-`HttpOnly` cookie. Scripts send `Authorization: Bearer <value>`.
+A browser that opens the console without the token gets a form asking for it,
+rather than a refusal. Entering it once stores an `HttpOnly` cookie that lasts a
+day, so every room on that server opens without asking again. A link carrying
+`?token=<value>` skips the form, which is what the picker builds when its token
+field is filled.
+
+Scripts send `Authorization: Bearer <value>` and get a plain refusal, since a
+form is no use to `curl`.
 
 ## During the show
 

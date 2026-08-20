@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Operator token</title>
+    <link rel="stylesheet" href="/assets/console.css" />
+    <link rel="stylesheet" href="/assets/unlock.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <div class="room"><strong id="roomName"></strong></div>
+      <div class="conn"><a id="viewerLink" href="/">room picker</a></div>
+    </header>
+
+    <main class="unlock">
+      <section class="panel">
+        <h2>Operator token</h2>
+        <p class="hint" id="failed" hidden>That token was not accepted.</p>
+        <p class="hint">
+          The console controls the timer, so it asks for the token this server
+          was started with. The stage display and the agenda need nothing.
+        </p>
+        <form method="get" class="stack">
+          <label class="field">
+            <span>Token</span>
+            <input
+              id="token"
+              name="token"
+              type="password"
+              autocomplete="current-password"
+              autofocus
+              required
+            />
+          </label>
+          <button class="primary" type="submit">Open the console</button>
+        </form>
+        <p class="hint">
+          This browser remembers it for a day, so every room on this server
+          opens without asking again.
+        </p>
+      </section>
+    </main>
+    <script type="module" src="/assets/unlock.js"></script>
+  </body>
+</html>
