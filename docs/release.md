@@ -60,7 +60,11 @@ docker run --rm -p 8080:8080 -v scm-state:/data \
 
 The image is Alpine with the static Linux binary, running as a non-root user. It
 serves on 8080 and keeps snapshots in `/data`, so mount a volume there to keep
-rooms across a restart. Arguments after the image name go to the binary.
+rooms across a restart.
+
+The port and the state directory sit in the image `ENTRYPOINT` rather than its
+`CMD`. Arguments after the image name are added to them rather than replacing
+them, so passing `--token` cannot silently turn persistence off.
 
 | Tag | Points at |
 |---|---|

@@ -12,6 +12,9 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: fmt · clippy · test
@@ -171,7 +174,7 @@ jobs:
         id: tags
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "tags=ghcr.io/${{ env.REPO_LOWER }}:pr-${{ github.event.pull_request.number }},ghcr.io/${{ env.REPO_LOWER }}:sha-${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "tags=ghcr.io/${{ env.REPO_LOWER }}:pr-${{ github.event.pull_request.number }},ghcr.io/${{ env.REPO_LOWER }}:sha-${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
           else
             echo "tags=ghcr.io/${{ env.REPO_LOWER }}:edge,ghcr.io/${{ env.REPO_LOWER }}:sha-${{ github.sha }}" >> $GITHUB_OUTPUT
           fi

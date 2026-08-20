@@ -52,6 +52,9 @@ docker run --rm -p 8080:8080 -v scm-state:/data \
   ghcr.io/kylejameswalker/simpleconfidencemonitor:latest --token s3cret
 ```
 
+The image serves on 8080 and keeps rooms in `/data`, so mount a volume there.
+Arguments after the image name are added to those.
+
 The log prints the address to open. The picker at `/` builds the links for a room
 and shows a QR code for the stage display.
 
