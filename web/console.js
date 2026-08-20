@@ -20,9 +20,10 @@ const QUICK_MINUTES = [5, 10, 15, 20, 30];
 const TONES = ['neutral', 'warn', 'alert'];
 const MAX_PRESETS = 8;
 
-// The editor holds its own copy while open, so an arriving frame cannot
+// An editor holds its own copy while open, so an arriving frame cannot
 // overwrite half typed text.
 let editingPresets = false;
+let editingCue = null;
 const TOGGLES = {
   blackout: (on) => ({ cmd: 'blackout', on }),
   showClock: (on) => ({ cmd: 'display', show_clock: on }),
@@ -149,6 +150,8 @@ function drawPresets(frame) {
 function drawRundown(frame) {
   const { rundown } = frame;
   const list = el('cues');
+  if (editingCue !== null && rundown.cues.some((cue) => cue.id === editingCue)) return;
+  editingCue = null;
   list.replaceChildren();
   for (const [index, cue] of rundown.cues.entries()) {
     const item = document.createElement('li');
@@ -175,6 +178,7 @@ function drawRundown(frame) {
     actions.className = 'actions';
     actions.append(
       action('Load', () => send({ cmd: 'load_cue', id: cue.id })),
+      action('Edit', () => openCueEditor(item, cue)),
       action('Up', () => send({ cmd: 'move_cue', id: cue.id, to: Math.max(0, index - 1) })),
       action('Down', () => send({ cmd: 'move_cue', id: cue.id, to: index + 1 })),
       action('X', () => send({ cmd: 'remove_cue', id: cue.id })),
@@ -188,6 +192,74 @@ function drawRundown(frame) {
   el('totals').textContent = totals.cueCount
     ? `${totals.cueCount} cues · ${formatDuration(totals.remainingMs)} left of ${formatDuration(totals.totalMs)}`
     : '';
+}
+
+// One row turns into a form in place. Save sends only what changed.
+function openCueEditor(row, cue) {
+  editingCue = cue.id;
+  const form = document.createElement('form');
+  form.className = 'cueEdit';
+
+  const field = (label, value, extra = {}) => {
+    const wrap = document.createElement('label');
+    wrap.className = 'field';
+    const name = document.createElement('span');
+    name.textContent = label;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = value;
+    Object.assign(input, extra);
+    wrap.append(name, input);
+    return { wrap, input };
+  };
+
+  const title = field('Title', cue.title);
+  const speaker = field('Speaker', cue.speaker);
+  const length = field('Length', formatDuration(cue.duration_ms), {
+    inputMode: 'numeric',
+    placeholder: '10:00',
+  });
+  const notes = field('Note', cue.notes);
+
+  const buttons = document.createElement('div');
+  buttons.className = 'transport';
+  const save = document.createElement('button');
+  save.type = 'submit';
+  save.className = 'primary';
+  save.textContent = 'Save';
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.textContent = 'Cancel';
+  cancel.addEventListener('click', () => {
+    editingCue = null;
+    if (state) {
+      el('cues').replaceChildren();
+      drawRundown(state);
+    }
+  });
+  buttons.append(save, cancel);
+
+  form.append(title.wrap, speaker.wrap, length.wrap, notes.wrap, buttons);
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const ms = parseDuration(length.input.value);
+    if (ms === null) {
+      toast('Cue length takes minutes, or mm:ss');
+      return;
+    }
+    send({
+      cmd: 'update_cue',
+      id: cue.id,
+      title: title.input.value.trim(),
+      speaker: speaker.input.value.trim(),
+      duration_ms: ms,
+      notes: notes.input.value.trim(),
+    });
+    editingCue = null;
+  });
+
+  row.replaceChildren(form);
+  title.input.focus();
 }
 
 function action(label, onClick) {
@@ -433,6 +505,7 @@ el('arm').addEventListener('click', () => {
 el('disarm').addEventListener('click', () => send({ cmd: 'schedule_start', at_ms: null }));
 
 el('nextCue').addEventListener('click', () => send({ cmd: 'next_cue' }));
+el('nextAndStart').addEventListener('click', () => send({ cmd: 'next_and_start' }));
 el('prevCue').addEventListener('click', () => send({ cmd: 'prev_cue' }));
 
 el('cueForm').addEventListener('submit', (event) => {
@@ -480,6 +553,7 @@ document.addEventListener('keydown', (event) => {
     f: () => send({ cmd: 'flash' }),
     n: () => send({ cmd: 'next_cue' }),
     p: () => send({ cmd: 'prev_cue' }),
+    g: () => send({ cmd: 'next_and_start' }),
   };
   const action = keys[event.key.toLowerCase()];
   if (action) {

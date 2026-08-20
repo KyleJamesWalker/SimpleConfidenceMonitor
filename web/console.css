@@ -578,3 +578,27 @@ button.danger:hover {
   border-color: var(--danger);
   color: var(--danger);
 }
+
+.cueEdit {
+  display: grid;
+  grid-template-columns: 2fr 1.4fr 0.8fr 2fr;
+  gap: 0.5rem;
+  align-items: end;
+  width: 100%;
+}
+
+.cueEdit .transport {
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.cues li:has(.cueEdit) {
+  grid-template-columns: 1fr;
+  border-color: var(--accent);
+}
+
+@media (max-width: 720px) {
+  .cueEdit {
+    grid-template-columns: 1fr;
+  }
+}

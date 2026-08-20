@@ -56,13 +56,22 @@ form is no use to `curl`.
 The console carries the timer, the message to the speaker, the screen controls,
 the second timer and the rundown. Keys cover the hot path.
 
+Loading a cue arms it and leaves the timer stopped, so an operator can line up
+the next talk while the current one runs. `g`, or the Next and go button, does
+both at once, which is what one talk ending and the next beginning looks like.
+Auto advance does the same thing on its own when a cue reaches zero.
+
+Each row in the rundown carries Edit, which opens the cue in place for its
+title, speaker, length and note.
+
 | Key | Action |
 |---|---|
 | `space` | Start or pause |
 | `r` | Reset |
 | `b` | Blackout |
 | `f` | Flash |
-| `n` and `p` | Next and previous cue |
+| `g` | Load the next cue and start it |
+| `n` and `p` | Next and previous cue, without starting |
 | `enter` | Send the message, from the message box |
 
 A row of quick messages sits above the message box, so the common notes take one
@@ -135,7 +144,8 @@ state, so a caller can confirm the `rev` moved.
 | `remove_cue` | `id` | Drops a cue |
 | `move_cue` | `id`, `to` | Reorders |
 | `load_cue` | `id` | Points the timer and the screen at a cue |
-| `next_cue`, `prev_cue` | | Walks the list |
+| `next_cue`, `prev_cue` | | Walks the list, leaving the timer stopped |
+| `next_and_start` | | Loads the next cue and starts it |
 | `set_auto_advance` | `on` | Starts the next cue when one runs out |
 | `set_cues` | `cues` | Replaces the running order |
 | `aux_start`, `aux_pause`, `aux_reset` | | Transport for the second timer |
