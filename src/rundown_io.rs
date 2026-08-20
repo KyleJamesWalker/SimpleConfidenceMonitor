@@ -30,6 +30,42 @@ pub fn parse_duration(raw: &str) -> Option<u64> {
 
 const HEADER: &str = "title,speaker,duration,notes";
 
+/// A cue as a document rather than as live state: no id, and a duration in the
+/// same shape the CSV and the console use.
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct CueDocument {
+    pub title: String,
+    pub speaker: String,
+    pub duration: String,
+    pub notes: String,
+}
+
+#[derive(serde::Deserialize)]
+struct RundownDocument {
+    cues: Vec<CueDraft>,
+}
+
+/// Writes the running order as JSON carrying the same fields as the CSV.
+pub fn to_json(cues: &[Cue]) -> String {
+    let document: Vec<CueDocument> = cues
+        .iter()
+        .map(|cue| CueDocument {
+            title: cue.title.clone(),
+            speaker: cue.speaker.clone(),
+            duration: format_duration(cue.duration_ms),
+            notes: cue.notes.clone(),
+        })
+        .collect();
+    serde_json::json!({ "cues": document }).to_string()
+}
+
+/// Reads a running order from JSON. A cue takes `duration` in clock form, or
+/// `duration_ms` for a caller that already counts milliseconds.
+pub fn parse_json(body: &str) -> Result<Vec<CueDraft>, String> {
+    let document: RundownDocument = serde_json::from_str(body).map_err(|err| err.to_string())?;
+    Ok(document.cues)
+}
+
 /// Reads a running order. A header row names the columns, and its absence
 /// means the default order.
 pub fn parse_csv(body: &str) -> Result<Vec<CueDraft>, String> {

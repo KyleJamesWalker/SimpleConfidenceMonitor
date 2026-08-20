@@ -127,7 +127,7 @@ state, so a caller can confirm the `rev` moved.
 | `start` | | Starts or resumes the timer |
 | `pause` | | Holds the readout and keeps the elapsed time |
 | `reset` | | Back to the full duration, stopped |
-| `set_duration` | `ms` | Sets the target |
+| `set_duration` | `duration` | Sets the target |
 | `adjust` | `ms` | Adds or removes time, never below zero |
 | `set_mode` | `mode` | `countdown`, `count_up` or `time_of_day` |
 | `set_thresholds` | `warn_ms`, `danger_ms` | Amber and red points. Zero turns one off |
@@ -139,7 +139,7 @@ state, so a caller can confirm the `rev` moved.
 | `flash` | | Flashes the viewer twice |
 | `blackout` | `on` | Cuts the viewer to black |
 | `display` | `title`, `next_up`, `show_clock`, `clock_24h`, `show_progress`, `mirror`, `scale`, `chime`, `show_speaker`, `show_notes` | Screen settings. Every field is optional |
-| `add_cue` | `title`, `speaker`, `duration_ms`, `notes` | Appends a cue |
+| `add_cue` | `title`, `speaker`, `duration`, `notes` | Appends a cue |
 | `update_cue` | `id`, and any cue field | Changes one cue |
 | `remove_cue` | `id` | Drops a cue |
 | `move_cue` | `id`, `to` | Reorders |
@@ -149,12 +149,31 @@ state, so a caller can confirm the `rev` moved.
 | `set_auto_advance` | `on` | Starts the next cue when one runs out |
 | `set_cues` | `cues` | Replaces the running order |
 | `aux_start`, `aux_pause`, `aux_reset` | | Transport for the second timer |
-| `aux_set_duration` | `ms` | Sets the second timer |
+| `aux_set_duration` | `duration` | Sets the second timer |
 | `aux_adjust` | `ms` | Adds or removes time on the second timer |
 | `aux_set` | `label`, `visible` | Names the second timer and shows or hides it |
 | `clear_room` | | Returns every part of the room to its defaults |
 
 `tone` is `neutral`, `warn` or `alert`. `scale` is a percent between 50 and 200.
+
+### Durations
+
+Anywhere a command or a document sets a length, it takes the same forms the
+console and the CSV take:
+
+| Written | Means |
+|---|---|
+| `"7:30"` | Seven minutes thirty |
+| `"1:02:03"` | An hour, two minutes, three seconds |
+| `"20"` or `20` | Twenty minutes |
+| `1800000` | Thirty minutes, in milliseconds |
+
+A bare number under a thousand is minutes, since nobody sets a talk to half a
+second. A thousand or more is milliseconds. `duration_ms` still works as a
+spelling of `duration`, so an existing script keeps running.
+
+`adjust` and `aux_adjust` are the exception: a delta keeps its milliseconds,
+because `-30000` there means half a minute off and nothing else.
 
 ### Other endpoints
 
@@ -182,8 +201,10 @@ curl -X POST http://localhost:8080/api/rooms/keynote/rundown \
 
 The columns are `title`, `speaker`, `duration` and `notes`. A header row names
 them in any order, and common spellings map onto the same column, so `cue`,
-`presenter` and `length` work too. A duration takes minutes, `mm:ss` or
-`hh:mm:ss`, and an empty one falls back to five minutes.
+`presenter` and `length` work too. An empty duration falls back to five minutes.
+
+The JSON export carries the same four fields with the same duration format, so
+either document rebuilds the same running order.
 
 A row without a title is an error, and a refused import leaves the running order
 alone. The console carries the same import and export beside the cue list.

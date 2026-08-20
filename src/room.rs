@@ -210,7 +210,11 @@ pub struct CueDraft {
     pub title: String,
     #[serde(default)]
     pub speaker: String,
-    #[serde(default = "default_cue_ms")]
+    #[serde(
+        default = "default_cue_ms",
+        alias = "duration",
+        deserialize_with = "clock_or_millis"
+    )]
     pub duration_ms: u64,
     #[serde(default)]
     pub notes: String,
@@ -218,6 +222,51 @@ pub struct CueDraft {
 
 fn default_cue_ms() -> u64 {
     DEFAULT_CUE_MS
+}
+
+/// A duration arrives as "5:30" from a document, or as a plain number from a
+/// caller that already counts milliseconds.
+fn millis_from(value: serde_json::Value) -> Result<u64, String> {
+    match value {
+        serde_json::Value::String(text) => crate::rundown_io::parse_duration(&text)
+            .ok_or_else(|| format!("{text} is not a duration")),
+        serde_json::Value::Number(number) => number
+            .as_u64()
+            .map(minutes_or_millis)
+            .ok_or_else(|| "a duration cannot be negative".to_string()),
+        other => Err(format!("{other} is not a duration")),
+    }
+}
+
+/// Under a second is nobody's timer, so a small number means minutes. That
+/// matches the bare number a spreadsheet carries in its duration column.
+fn minutes_or_millis(value: u64) -> u64 {
+    if value > 0 && value < 1000 {
+        value * 60_000
+    } else {
+        value
+    }
+}
+
+fn clock_or_millis<'de, D>(deserializer: D) -> Result<u64, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error;
+    let value = serde_json::Value::deserialize(deserializer)?;
+    millis_from(value).map_err(D::Error::custom)
+}
+
+/// The same for a command field that may be absent.
+fn optional_clock_or_millis<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error;
+    match Option::<serde_json::Value>::deserialize(deserializer)? {
+        None | Some(serde_json::Value::Null) => Ok(None),
+        Some(value) => millis_from(value).map(Some).map_err(D::Error::custom),
+    }
 }
 
 /// The running order. An id is never reused, so a stale console cannot load
@@ -292,6 +341,7 @@ pub enum Command {
     Pause,
     Reset,
     SetDuration {
+        #[serde(alias = "duration", deserialize_with = "clock_or_millis")]
         ms: u64,
     },
     Adjust {
@@ -332,6 +382,11 @@ pub enum Command {
     AddCue {
         title: Option<String>,
         speaker: Option<String>,
+        #[serde(
+            default,
+            alias = "duration",
+            deserialize_with = "optional_clock_or_millis"
+        )]
         duration_ms: Option<u64>,
         notes: Option<String>,
     },
@@ -339,6 +394,11 @@ pub enum Command {
         id: u64,
         title: Option<String>,
         speaker: Option<String>,
+        #[serde(
+            default,
+            alias = "duration",
+            deserialize_with = "optional_clock_or_millis"
+        )]
         duration_ms: Option<u64>,
         notes: Option<String>,
     },
@@ -377,6 +437,7 @@ pub enum Command {
     AuxPause,
     AuxReset,
     AuxSetDuration {
+        #[serde(alias = "duration", deserialize_with = "clock_or_millis")]
         ms: u64,
     },
     AuxAdjust {

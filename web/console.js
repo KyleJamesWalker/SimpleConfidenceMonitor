@@ -217,7 +217,7 @@ function openCueEditor(row, cue) {
   const speaker = field('Speaker', cue.speaker);
   const length = field('Length', formatDuration(cue.duration_ms), {
     inputMode: 'numeric',
-    placeholder: '10:00',
+    placeholder: '5:00',
   });
   const notes = field('Note', cue.notes);
 

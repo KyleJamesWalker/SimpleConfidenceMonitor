@@ -231,3 +231,50 @@ fn a_clock_that_moves_backwards_does_not_underflow() {
     timer.start(T0);
     assert_eq!(timer.readout(T0 - 5_000).elapsed_ms, 0);
 }
+
+// A duration under a thousand is minutes, not milliseconds. Nobody sets a talk
+// to half a second, and the console and the CSV both read a bare number as
+// minutes.
+#[test]
+fn set_duration_reads_a_small_number_as_minutes() {
+    let command: simple_confidence_monitor::room::Command =
+        serde_json::from_str(r#"{"cmd":"set_duration","ms":15}"#).unwrap();
+    let room = simple_confidence_monitor::room::Room::default();
+    assert_eq!(room.apply(&command, T0).timer.duration_ms, 15 * MIN);
+}
+
+#[test]
+fn set_duration_leaves_a_real_millisecond_count_alone() {
+    let command: simple_confidence_monitor::room::Command =
+        serde_json::from_str(r#"{"cmd":"set_duration","ms":900000}"#).unwrap();
+    let room = simple_confidence_monitor::room::Room::default();
+    assert_eq!(room.apply(&command, T0).timer.duration_ms, 15 * MIN);
+}
+
+#[test]
+fn set_duration_takes_a_clock_value() {
+    let command: simple_confidence_monitor::room::Command =
+        serde_json::from_str(r#"{"cmd":"set_duration","ms":"7:30"}"#).unwrap();
+    let room = simple_confidence_monitor::room::Room::default();
+    assert_eq!(room.apply(&command, T0).timer.duration_ms, 450_000);
+}
+
+#[test]
+fn the_aux_duration_follows_the_same_rule() {
+    let command: simple_confidence_monitor::room::Command =
+        serde_json::from_str(r#"{"cmd":"aux_set_duration","ms":10}"#).unwrap();
+    let room = simple_confidence_monitor::room::Room::default();
+    assert_eq!(room.apply(&command, T0).aux.timer.duration_ms, 10 * MIN);
+}
+
+#[test]
+fn an_adjustment_stays_in_milliseconds() {
+    let command: simple_confidence_monitor::room::Command =
+        serde_json::from_str(r#"{"cmd":"adjust","ms":-30000}"#).unwrap();
+    let room = simple_confidence_monitor::room::Room::default();
+    assert_eq!(
+        room.apply(&command, T0).timer.duration_ms,
+        15 * MIN - 30_000,
+        "a delta is not a duration, so it keeps its unit"
+    );
+}

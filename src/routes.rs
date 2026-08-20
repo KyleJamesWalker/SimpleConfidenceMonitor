@@ -13,8 +13,8 @@ use qrcode::render::svg;
 use crate::assets::Web;
 use crate::auth::{Auth, COOKIE, Outcome};
 use crate::hub::Hub;
-use crate::room::{Command, CueDraft, Room, RoomName};
-use crate::rundown_io::{parse_csv, to_csv};
+use crate::room::{Command, Room, RoomName};
+use crate::rundown_io::{parse_csv, parse_json, to_csv, to_json};
 use crate::ws::{Role, serve_socket};
 
 /// Longest text the QR endpoint will encode. A room URL is far shorter.
@@ -183,7 +183,7 @@ async fn command(
 }
 
 /// Fields that stay text even when the value looks like a number or a boolean.
-const TEXT_FIELDS: [&str; 10] = [
+const TEXT_FIELDS: [&str; 11] = [
     "cmd",
     "text",
     "tone",
@@ -194,6 +194,7 @@ const TEXT_FIELDS: [&str; 10] = [
     "speaker",
     "notes",
     "on_expire",
+    "duration",
 ];
 
 /// A command from query parameters, for a controller that can only issue a GET.
@@ -274,12 +275,7 @@ async fn export_json(State(state): State<AppState>, Path(room): Path<String>) ->
         Err(response) => return *response,
     };
     let cues = cues_of(&state, &name);
-    json(serde_json::json!({ "cues": cues }).to_string())
-}
-
-#[derive(serde::Deserialize)]
-struct RundownBody {
-    cues: Vec<CueDraft>,
+    json(to_json(&cues))
 }
 
 /// Replaces a running order from CSV or JSON, chosen by the content type.
@@ -307,9 +303,9 @@ async fn import_rundown(
         .is_some_and(|value| value.contains("json"));
 
     let cues = if is_json {
-        match serde_json::from_str::<RundownBody>(&body) {
-            Ok(parsed) => parsed.cues,
-            Err(err) => return (StatusCode::BAD_REQUEST, err.to_string()).into_response(),
+        match parse_json(&body) {
+            Ok(cues) => cues,
+            Err(err) => return (StatusCode::BAD_REQUEST, err).into_response(),
         }
     } else {
         match parse_csv(&body) {

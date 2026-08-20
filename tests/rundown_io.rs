@@ -1,5 +1,8 @@
+use simple_confidence_monitor::room::DEFAULT_CUE_MS;
 use simple_confidence_monitor::room::{Command, CueDraft, Room};
-use simple_confidence_monitor::rundown_io::{parse_csv, parse_duration, to_csv};
+use simple_confidence_monitor::rundown_io::{
+    parse_csv, parse_duration, parse_json, to_csv, to_json,
+};
 
 const T0: u64 = 1_700_000_000_000;
 const MIN: u64 = 60_000;
@@ -283,4 +286,140 @@ fn refuses_a_quote_left_open_at_the_end() {
 fn a_closed_quote_at_the_end_of_a_document_is_fine() {
     let cues = parse_csv("title,notes\nPanel,\"two mics\"\n").unwrap();
     assert_eq!(cues[0].notes, "two mics");
+}
+
+// The exported documents should be interchangeable: same field names, same
+// duration format, whichever one you edit.
+#[test]
+fn a_json_document_writes_the_same_fields_as_a_csv_one() {
+    let cues = vec![CueDraft {
+        title: "Panel".into(),
+        speaker: "Alice".into(),
+        duration_ms: 330_000,
+        notes: "two mics".into(),
+    }];
+    let room = Room::default();
+    room.apply(&Command::SetCues { cues }, T0);
+
+    let document = to_json(&room.snapshot().rundown.cues);
+    let parsed: serde_json::Value = serde_json::from_str(&document).unwrap();
+    let cue = &parsed["cues"][0];
+    assert_eq!(
+        cue["duration"], "5:30",
+        "the same shape the CSV and the UI use"
+    );
+    assert!(
+        cue.get("duration_ms").is_none(),
+        "one spelling per document"
+    );
+    assert!(cue.get("id").is_none(), "an id belongs to the live room");
+
+    let mut keys: Vec<&str> = cue
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
+    keys.sort_unstable();
+    assert_eq!(keys, vec!["duration", "notes", "speaker", "title"]);
+}
+
+#[test]
+fn a_json_import_reads_a_clock_duration() {
+    let body = r#"{"cues":[{"title":"Panel","speaker":"Alice","duration":"5:30","notes":"x"}]}"#;
+    let cues = parse_json(body).unwrap();
+    assert_eq!(cues[0].duration_ms, 330_000);
+    assert_eq!(cues[0].title, "Panel");
+}
+
+#[test]
+fn a_json_import_reads_plain_minutes_too() {
+    let cues = parse_json(r#"{"cues":[{"title":"Panel","duration":"20"}]}"#).unwrap();
+    assert_eq!(cues[0].duration_ms, 20 * MIN);
+}
+
+#[test]
+fn a_json_import_still_accepts_milliseconds() {
+    let cues = parse_json(r#"{"cues":[{"title":"Panel","duration_ms":330000}]}"#).unwrap();
+    assert_eq!(cues[0].duration_ms, 330_000);
+}
+
+#[test]
+fn a_json_import_without_a_duration_takes_the_default() {
+    let cues = parse_json(r#"{"cues":[{"title":"Panel"}]}"#).unwrap();
+    assert_eq!(cues[0].duration_ms, DEFAULT_CUE_MS);
+}
+
+#[test]
+fn a_json_import_refuses_a_duration_it_cannot_read() {
+    assert!(parse_json(r#"{"cues":[{"title":"Panel","duration":"soon"}]}"#).is_err());
+    assert!(parse_json(r#"{"cues":[{"title":"Panel","duration":"1:2:3:4"}]}"#).is_err());
+}
+
+#[test]
+fn the_two_documents_round_trip_to_the_same_cues() {
+    let room = Room::default();
+    room.apply(
+        &Command::SetCues {
+            cues: vec![
+                CueDraft {
+                    title: "Panel: A, B".into(),
+                    speaker: "Alice".into(),
+                    duration_ms: 20 * MIN,
+                    notes: "two mics".into(),
+                },
+                CueDraft {
+                    title: "Keynote".into(),
+                    speaker: String::new(),
+                    duration_ms: 45 * MIN + 30_000,
+                    notes: String::new(),
+                },
+            ],
+        },
+        T0,
+    );
+    let cues = room.snapshot().rundown.cues;
+
+    let from_csv = parse_csv(&to_csv(&cues)).unwrap();
+    let from_json = parse_json(&to_json(&cues)).unwrap();
+    assert_eq!(
+        from_csv, from_json,
+        "either document rebuilds the same rundown"
+    );
+    assert_eq!(from_csv[1].duration_ms, 45 * MIN + 30_000);
+}
+
+// A number under a thousand cannot be milliseconds: nobody runs a cue for half
+// a second. It means minutes, the same as the bare number a CSV carries.
+#[test]
+fn a_small_number_reads_as_minutes() {
+    let cues = parse_json(r#"{"cues":[{"title":"Panel","duration":20}]}"#).unwrap();
+    assert_eq!(cues[0].duration_ms, 20 * MIN);
+}
+
+#[test]
+fn a_small_number_under_the_millisecond_spelling_reads_as_minutes_too() {
+    let cues = parse_json(r#"{"cues":[{"title":"Panel","duration_ms":45}]}"#).unwrap();
+    assert_eq!(cues[0].duration_ms, 45 * MIN);
+}
+
+#[test]
+fn a_real_millisecond_count_is_left_alone() {
+    let cues = parse_json(r#"{"cues":[{"title":"Panel","duration_ms":1800000}]}"#).unwrap();
+    assert_eq!(cues[0].duration_ms, 30 * MIN);
+}
+
+#[test]
+fn the_boundary_lands_where_a_second_begins() {
+    let cues =
+        parse_json(r#"{"cues":[{"title":"A","duration":999},{"title":"B","duration":1000}]}"#)
+            .unwrap();
+    assert_eq!(cues[0].duration_ms, 999 * MIN);
+    assert_eq!(cues[1].duration_ms, 1_000, "a thousand is one second");
+}
+
+#[test]
+fn a_zero_duration_stays_zero() {
+    let cues = parse_json(r#"{"cues":[{"title":"Panel","duration":0}]}"#).unwrap();
+    assert_eq!(cues[0].duration_ms, 0);
 }

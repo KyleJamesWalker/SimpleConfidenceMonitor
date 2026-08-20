@@ -321,7 +321,10 @@ async fn the_rundown_exports_as_json() {
         .unwrap();
     assert_eq!(body["cues"].as_array().unwrap().len(), 2);
     assert_eq!(body["cues"][1]["title"], "Keynote");
-    assert_eq!(body["cues"][1]["duration_ms"], 1_800_000);
+    assert_eq!(
+        body["cues"][1]["duration"], "30:00",
+        "a document says 30:00, the same as the CSV and the console"
+    );
 }
 
 #[tokio::test]
@@ -777,4 +780,86 @@ async fn an_open_server_never_shows_the_form() {
         .unwrap();
     assert_eq!(response.status(), 200);
     assert!(response.text().await.unwrap().contains("Operator console"));
+}
+
+#[tokio::test]
+async fn a_json_import_takes_a_clock_duration() {
+    let addr = open_server().await;
+    let body: serde_json::Value = client()
+        .post(format!("http://{addr}/api/rooms/keynote/rundown"))
+        .json(&serde_json::json!({"cues": [{"title": "Panel", "duration": "5:30"}]}))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(body["rundown"]["cues"][0]["duration_ms"], 330_000);
+}
+
+#[tokio::test]
+async fn add_cue_takes_a_clock_duration() {
+    let addr = open_server().await;
+    let body: serde_json::Value = client()
+        .post(format!("http://{addr}/api/rooms/keynote/cmd"))
+        .json(&serde_json::json!({"cmd": "add_cue", "title": "Panel", "duration": "7:30"}))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(body["rundown"]["cues"][0]["duration_ms"], 450_000);
+}
+
+#[tokio::test]
+async fn add_cue_still_takes_milliseconds() {
+    let addr = open_server().await;
+    let body: serde_json::Value = client()
+        .post(format!("http://{addr}/api/rooms/keynote/cmd"))
+        .json(&serde_json::json!({"cmd": "add_cue", "title": "Panel", "duration_ms": 450_000}))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(body["rundown"]["cues"][0]["duration_ms"], 450_000);
+}
+
+#[tokio::test]
+async fn a_duration_that_is_not_a_duration_is_refused() {
+    let addr = open_server().await;
+    let response = client()
+        .post(format!("http://{addr}/api/rooms/keynote/cmd"))
+        .json(&serde_json::json!({"cmd": "add_cue", "title": "Panel", "duration": "soon"}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 400);
+}
+
+#[tokio::test]
+async fn a_get_command_takes_a_clock_duration() {
+    let addr = open_server().await;
+    let body: serde_json::Value = get_cmd(addr, "cmd=add_cue&title=Panel&duration=12:00")
+        .await
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(body["rundown"]["cues"][0]["duration_ms"], 720_000);
+}
+
+#[tokio::test]
+async fn a_get_duration_reads_as_minutes_like_the_csv_does() {
+    let addr = open_server().await;
+    let body: serde_json::Value = get_cmd(addr, "cmd=add_cue&title=Panel&duration=20")
+        .await
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(
+        body["rundown"]["cues"][0]["duration_ms"], 1_200_000,
+        "a bare number means minutes, not milliseconds"
+    );
 }
