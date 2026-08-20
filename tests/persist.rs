@@ -188,3 +188,39 @@ fn a_hub_restores_the_rooms_it_finds() {
     let room = hub.get_or_create(&name("keynote"));
     assert_eq!(room.snapshot().timer.duration_ms, 42_000);
 }
+
+#[test]
+fn a_snapshot_written_before_a_field_existed_still_loads() {
+    let dir = temp_dir("older");
+    let store = Store::new(&dir).unwrap();
+    // A snapshot from before scheduled starts and presets existed.
+    let body = r#"{
+      "saved_at_ms": 1700000000000,
+      "state": {
+        "rev": 3,
+        "timer": {
+          "mode": "countdown",
+          "duration_ms": 600000,
+          "run": {"state": "stopped"},
+          "elapsed_ms": 0,
+          "warn_ms": 180000,
+          "danger_ms": 60000,
+          "on_expire": "count_negative"
+        },
+        "message": {"text": "", "tone": "neutral", "visible": false},
+        "display": {
+          "title": "Keynote", "next_up": "", "show_clock": true, "clock_24h": true,
+          "show_progress": true, "blackout": false, "mirror": false, "scale": 100,
+          "flash_at": 0
+        },
+        "rundown": {"cues": [], "active": null, "auto_advance": false, "next_id": 0}
+      }
+    }"#;
+    std::fs::write(dir.join("keynote.json"), body).unwrap();
+
+    let loaded = store.load_all();
+    assert_eq!(loaded.len(), 1, "an older snapshot should still load");
+    assert_eq!(loaded[0].1.display.title, "Keynote");
+    assert_eq!(loaded[0].1.timer.start_at_ms, None);
+    assert!(!loaded[0].1.display.chime);
+}

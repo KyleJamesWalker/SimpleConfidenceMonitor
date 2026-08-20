@@ -101,6 +101,7 @@ pub struct Display {
     /// A viewer flashes when this value changes.
     pub flash_at: u64,
     /// Sound a tone when the timer reaches zero.
+    #[serde(default)]
     pub chime: bool,
 }
 
@@ -214,11 +215,18 @@ impl Rundown {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RoomState {
     /// Increments on every command that changes state.
+    #[serde(default)]
     pub rev: u64,
+    #[serde(default)]
     pub timer: Timer,
+    #[serde(default)]
     pub message: Message,
+    #[serde(default)]
     pub display: Display,
+    #[serde(default)]
     pub rundown: Rundown,
+    /// A snapshot from before presets existed comes back with the defaults.
+    #[serde(default = "default_presets")]
     pub presets: Vec<Preset>,
 }
 
