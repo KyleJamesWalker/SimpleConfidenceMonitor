@@ -1,6 +1,8 @@
 pub mod assets;
+pub mod auth;
 pub mod clock;
 pub mod hub;
+pub mod persist;
 pub mod room;
 pub mod routes;
 pub mod timer;

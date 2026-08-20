@@ -153,6 +153,24 @@ export function parseDuration(raw) {
   return parts.map(Number).reduce((total, part) => total * 60 + part, 0) * 1000;
 }
 
+// The server rejects anything outside a-z, 0-9, dash and underscore.
+export function normalizeRoomName(raw) {
+  return String(raw)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64);
+}
+
+export function roomLinks(origin, room, token) {
+  const suffix = token ? `?token=${encodeURIComponent(token)}` : '';
+  return {
+    viewer: `${origin}/${room}`,
+    console: `${origin}/${room}/edit${suffix}`,
+  };
+}
+
 export function roomFromPath() {
   return location.pathname.split('/').filter(Boolean)[0] || 'main';
 }

@@ -1,10 +1,11 @@
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 
 use crate::clock::now_ms;
+use crate::persist::Snapshots;
 use crate::timer::{Mode, OnExpire, Timer};
 use crate::wire::ServerMsg;
 
@@ -264,24 +265,43 @@ const FRAME_BACKLOG: usize = 32;
 /// A live room. Shared across every connected client.
 #[derive(Debug)]
 pub struct Room {
+    name: RoomName,
     state: Mutex<RoomState>,
     frames: broadcast::Sender<String>,
     viewers: AtomicUsize,
     editors: AtomicUsize,
+    snapshots: Option<Arc<Snapshots>>,
 }
 
 impl Default for Room {
     fn default() -> Self {
-        Self {
-            state: Mutex::new(RoomState::default()),
-            frames: broadcast::channel(FRAME_BACKLOG).0,
-            viewers: AtomicUsize::new(0),
-            editors: AtomicUsize::new(0),
-        }
+        Self::new(
+            RoomName::parse("room").expect("a literal name parses"),
+            None,
+        )
     }
 }
 
 impl Room {
+    pub fn new(name: RoomName, snapshots: Option<Arc<Snapshots>>) -> Self {
+        Self::restored(name, RoomState::default(), snapshots)
+    }
+
+    pub fn restored(name: RoomName, state: RoomState, snapshots: Option<Arc<Snapshots>>) -> Self {
+        Self {
+            name,
+            state: Mutex::new(state),
+            frames: broadcast::channel(FRAME_BACKLOG).0,
+            viewers: AtomicUsize::new(0),
+            editors: AtomicUsize::new(0),
+            snapshots,
+        }
+    }
+
+    pub fn name(&self) -> &RoomName {
+        &self.name
+    }
+
     pub fn snapshot(&self) -> RoomState {
         self.state.lock().expect("room lock").clone()
     }
@@ -312,14 +332,18 @@ impl Room {
 
     /// Applies a command, tells every client, and returns the new state.
     pub fn apply(&self, cmd: &Command, now_ms: u64) -> RoomState {
-        let next = {
+        let (next, changed) = {
             let mut state = self.state.lock().expect("room lock");
-            if state.apply(cmd, now_ms) {
+            let changed = state.apply(cmd, now_ms);
+            if changed {
                 state.rev += 1;
             }
-            state.clone()
+            (state.clone(), changed)
         };
         self.publish();
+        if let Some(snapshots) = self.snapshots.as_ref().filter(|_| changed) {
+            snapshots.mark(&self.name);
+        }
         next
     }
 

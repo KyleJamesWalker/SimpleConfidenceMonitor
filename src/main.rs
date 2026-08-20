@@ -1,10 +1,17 @@
 use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::Duration;
 
 use clap::Parser;
+use simple_confidence_monitor::auth::Auth;
 use simple_confidence_monitor::hub::Hub;
-use simple_confidence_monitor::routes::router;
+use simple_confidence_monitor::persist::{Snapshots, Store};
+use simple_confidence_monitor::routes::{AppState, router};
 use tracing_subscriber::EnvFilter;
+
+/// How long a room settles before its snapshot is written.
+const SNAPSHOT_DEBOUNCE: Duration = Duration::from_secs(1);
 
 /// A speaker timer and confidence monitor served from one binary.
 #[derive(Parser, Debug)]
@@ -37,9 +44,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.token.is_none() {
         tracing::warn!("no --token given: anyone on this network can control every room");
     }
+    let auth = Arc::new(match &args.token {
+        Some(token) => Auth::with_token(token.clone()),
+        None => Auth::open(),
+    });
 
-    let hub = Hub::new();
-    let app = router(hub);
+    let snapshots = match &args.state_dir {
+        Some(dir) => Some(Arc::new(Snapshots::new(Store::new(dir)?))),
+        None => None,
+    };
+    let hub = match &snapshots {
+        Some(snapshots) => Hub::with_snapshots(snapshots.clone()),
+        None => Hub::new(),
+    };
+    if let Some(snapshots) = &snapshots {
+        let restored = Store::new(args.state_dir.clone().expect("dir is set"))?.load_all();
+        if !restored.is_empty() {
+            tracing::info!(
+                "restored {} room(s) from {:?}",
+                restored.len(),
+                args.state_dir
+            );
+        }
+        hub.restore(restored);
+        let flusher_hub = hub.clone();
+        let flusher = snapshots.clone();
+        tokio::spawn(async move { flusher.run(&flusher_hub, SNAPSHOT_DEBOUNCE).await });
+    }
+
+    let app = router(AppState::new(hub, auth));
     let addr = SocketAddr::new(args.bind, args.port);
     let listener = tokio::net::TcpListener::bind(addr).await?;
 

@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use futures_util::{SinkExt, StreamExt};
 use serde_json::Value;
 use simple_confidence_monitor::hub::Hub;
-use simple_confidence_monitor::routes::router;
+use simple_confidence_monitor::routes::{AppState, router};
 use tokio_tungstenite::tungstenite::Message;
 
 type Socket =
@@ -12,7 +12,7 @@ type Socket =
 async fn serve() -> SocketAddr {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
-    let app = router(Hub::new());
+    let app = router(AppState::open(Hub::new()));
     tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
     addr
 }

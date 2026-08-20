@@ -1,11 +1,11 @@
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use simple_confidence_monitor::hub::Hub;
-use simple_confidence_monitor::routes::router;
+use simple_confidence_monitor::routes::{AppState, router};
 use tower::ServiceExt;
 
 async fn get(uri: &str) -> (StatusCode, String) {
-    let app = router(Hub::new());
+    let app = router(AppState::open(Hub::new()));
     let res = app
         .oneshot(Request::builder().uri(uri).body(Body::empty()).unwrap())
         .await
@@ -40,7 +40,7 @@ async fn viewer_route_rejects_an_invalid_room_name() {
 #[tokio::test]
 async fn viewer_route_creates_the_room() {
     let hub = Hub::new();
-    let app = router(hub.clone());
+    let app = router(AppState::open(hub.clone()));
     let res = app
         .oneshot(
             Request::builder()
