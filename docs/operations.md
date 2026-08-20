@@ -130,7 +130,7 @@ state, so a caller can confirm the `rev` moved.
 | `set_duration` | `duration` | Sets the target |
 | `adjust` | `ms` | Adds or removes time, never below zero |
 | `set_mode` | `mode` | `countdown`, `count_up` or `time_of_day` |
-| `set_thresholds` | `warn_ms`, `danger_ms` | Amber and red points. Zero turns one off |
+| `set_thresholds` | `warn`, `danger` | Amber and red points. Zero turns one off |
 | `set_on_expire` | `on_expire` | `count_negative` or `hold_at_zero` |
 | `schedule_start` | `at_ms` | Starts the timer at that epoch millisecond. Omit `at_ms` to cancel |
 | `message` | `text`, `tone`, `visible` | Note to the speaker. Every field is optional |
@@ -172,8 +172,11 @@ A bare number under a thousand is minutes, since nobody sets a talk to half a
 second. A thousand or more is milliseconds. `duration_ms` still works as a
 spelling of `duration`, so an existing script keeps running.
 
+Thresholds read the same way, and zero still turns one off.
+
 `adjust` and `aux_adjust` are the exception: a delta keeps its milliseconds,
-because `-30000` there means half a minute off and nothing else.
+because `-30000` there means half a minute off and nothing else. So does
+`schedule_start`, which takes a clock reading rather than a length.
 
 ### Other endpoints
 

@@ -278,3 +278,23 @@ fn an_adjustment_stays_in_milliseconds() {
         "a delta is not a duration, so it keeps its unit"
     );
 }
+
+#[test]
+fn thresholds_follow_the_same_duration_rule() {
+    let command: simple_confidence_monitor::room::Command =
+        serde_json::from_str(r#"{"cmd":"set_thresholds","warn_ms":3,"danger_ms":"0:30"}"#).unwrap();
+    let room = simple_confidence_monitor::room::Room::default();
+    let state = room.apply(&command, T0);
+    assert_eq!(state.timer.warn_ms, 3 * MIN);
+    assert_eq!(state.timer.danger_ms, 30_000);
+}
+
+#[test]
+fn a_zero_threshold_still_means_off() {
+    let command: simple_confidence_monitor::room::Command =
+        serde_json::from_str(r#"{"cmd":"set_thresholds","warn_ms":0,"danger_ms":0}"#).unwrap();
+    let room = simple_confidence_monitor::room::Room::default();
+    let state = room.apply(&command, T0);
+    assert_eq!(state.timer.warn_ms, 0, "zero turns a threshold off");
+    assert_eq!(state.timer.danger_ms, 0);
+}

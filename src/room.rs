@@ -351,7 +351,9 @@ pub enum Command {
         mode: Mode,
     },
     SetThresholds {
+        #[serde(alias = "warn", deserialize_with = "clock_or_millis")]
         warn_ms: u64,
+        #[serde(alias = "danger", deserialize_with = "clock_or_millis")]
         danger_ms: u64,
     },
     SetOnExpire {
