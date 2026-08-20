@@ -58,7 +58,7 @@ jobs:
         run: |
           v="${GITHUB_REF_NAME#v}"
           [ -n "$v" ] || { echo "::error::GITHUB_REF_NAME empty — release event carried no tag name"; exit 1; }
-          echo "$v" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$' || { echo "::error::tag '$GITHUB_REF_NAME' is not a semver version"; exit 1; }
+          echo "$v" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$' || { echo "::error::tag '$GITHUB_REF_NAME' is not a version this pipeline can publish: build metadata after a plus sign cannot become a Docker tag"; exit 1; }
           python3 - "$v" <<'PY'
           import re
           import sys
