@@ -254,3 +254,14 @@ async fn the_room_list_names_the_live_rooms() {
         .unwrap();
     assert_eq!(body["rooms"], serde_json::json!(["breakout", "keynote"]));
 }
+
+#[tokio::test]
+async fn a_guarded_server_keeps_the_agenda_open() {
+    let addr = guarded_server().await;
+    let response = client()
+        .get(format!("http://{addr}/keynote/agenda"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+}

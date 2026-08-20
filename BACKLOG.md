@@ -13,7 +13,7 @@ most, first.
       the thing an operator has no hands for.
 - [x] **Sound on expiry.** A tone when a cue reaches zero, unlocked by the first
       click on the viewer. Browser autoplay policy blocks it until then.
-- [ ] **Agenda view.** A read-only `/<room>/agenda` page listing the rundown
+- [x] **Agenda view.** A read-only `/<room>/agenda` page listing the rundown
       with planned clock times, for backstage and for the speakers.
 - [ ] **Rundown import and export.** CSV and JSON, both directions, so a
       running order can come from a spreadsheet.

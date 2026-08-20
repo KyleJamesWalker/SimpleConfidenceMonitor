@@ -41,11 +41,17 @@ Start the server, then open two screens for a room named `keynote`:
 |---|---|---|
 | Stage display | `http://<host>:8080/keynote` | no |
 | Operator console | `http://<host>:8080/keynote/edit` | yes |
+| Agenda | `http://<host>:8080/keynote/agenda` | no |
 
 The console carries the timer, the message to the speaker, and the screen
 controls. A row of quick messages sits above the message box, so the common
 notes take one press. Replace them per room with `set_presets`. Hot keys cover the fast path: space starts and pauses, `r` resets,
 `b` toggles blackout, `f` flashes the screen.
+
+The agenda is a read-only page for backstage and for the speakers. It lists the
+rundown with a projected clock time per cue, marks what is on now, and strikes
+through what is done. Times follow the running cue, so a session that overruns
+moves every later cue with it.
 
 Every operator action is also an HTTP call, so Bitfocus Companion, a Stream
 Deck or a shell script can drive the show:

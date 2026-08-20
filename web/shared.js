@@ -153,6 +153,44 @@ export function parseDuration(raw) {
   return parts.map(Number).reduce((total, part) => total * 60 + part, 0) * 1000;
 }
 
+// Clock times for a rundown. The active cue anchors on the wall clock, and the
+// rest chain from it. An overrunning cue chains the rest from now, because a
+// cue cannot start in the past.
+export function projectAgenda(rundown, activeRemainingMs, nowMs) {
+  const cues = rundown.cues || [];
+  const activeIndex = cues.findIndex((cue) => cue.id === rundown.active);
+  let chainFrom = nowMs;
+  if (activeIndex >= 0) {
+    chainFrom = Math.max(nowMs, nowMs + activeRemainingMs);
+  }
+  return cues.map((cue, index) => {
+    const row = {
+      id: cue.id,
+      index,
+      title: cue.title,
+      speaker: cue.speaker,
+      durationMs: cue.duration_ms,
+      startMs: null,
+      endMs: null,
+      state: 'planned',
+    };
+    if (activeIndex >= 0 && index < activeIndex) {
+      row.state = 'done';
+      return row;
+    }
+    if (index === activeIndex) {
+      row.state = 'active';
+      row.startMs = nowMs - (cue.duration_ms - activeRemainingMs);
+      row.endMs = nowMs + activeRemainingMs;
+      return row;
+    }
+    row.startMs = chainFrom;
+    row.endMs = chainFrom + cue.duration_ms;
+    chainFrom = row.endMs;
+    return row;
+  });
+}
+
 // Only the crossing into overtime rings. A viewer joining a room that is
 // already over does not, because prev is null on its first frame.
 export function shouldChime(previousPhase, nextPhase) {

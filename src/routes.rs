@@ -57,6 +57,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/rooms/{room}/ws", get(socket))
         .route("/{room}", get(viewer))
         .route("/{room}/edit", get(console))
+        .route("/{room}/agenda", get(agenda))
         .with_state(state)
 }
 
@@ -71,6 +72,13 @@ async fn picker() -> Response {
 async fn viewer(State(state): State<AppState>, Path(room): Path<String>) -> Response {
     match room_of(&state, &room) {
         Ok(_) => page("viewer.html", None),
+        Err(response) => *response,
+    }
+}
+
+async fn agenda(State(state): State<AppState>, Path(room): Path<String>) -> Response {
+    match room_of(&state, &room) {
+        Ok(_) => page("agenda.html", None),
         Err(response) => *response,
     }
 }

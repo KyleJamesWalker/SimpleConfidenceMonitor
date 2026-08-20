@@ -59,3 +59,16 @@ async fn missing_asset_returns_not_found() {
     let (status, _) = get("/assets/nope.js").await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 }
+
+#[tokio::test]
+async fn the_agenda_page_is_served() {
+    let (status, body) = get("/keynote/agenda").await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(!body.is_empty());
+}
+
+#[tokio::test]
+async fn the_agenda_page_rejects_an_invalid_room_name() {
+    let (status, _) = get("/a%20b/agenda").await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+}
