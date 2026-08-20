@@ -25,7 +25,7 @@ most, first.
       hardware controllers that can only issue a GET.
 - [x] **Clear a room.** An endpoint and a console control to reset a room to its
       defaults, including its snapshot.
-- [ ] **Speaker and notes on the viewer.** Optional lines, so a confidence
+- [x] **Speaker and notes on the viewer.** Optional lines, so a confidence
       monitor can carry the cue note.
 - [ ] **Discovery over mDNS.** Advertise the server so nobody reads an IP
       address aloud. Open question in the spec.

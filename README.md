@@ -97,7 +97,7 @@ state, so a caller can confirm the `rev` moved.
 | `set_presets` | `presets` | Replaces the quick messages. Each carries `text` and `tone` |
 | `flash` | | Flashes the viewer twice |
 | `blackout` | `on` | Cuts the viewer to black |
-| `display` | `title`, `next_up`, `show_clock`, `clock_24h`, `show_progress`, `mirror`, `scale`, `chime` | Screen settings. Every field is optional |
+| `display` | `title`, `next_up`, `show_clock`, `clock_24h`, `show_progress`, `mirror`, `scale`, `chime`, `show_speaker`, `show_notes` | Screen settings. Every field is optional |
 
 `tone` is `neutral`, `warn` or `alert`. `scale` is a percent between 50 and 200.
 
@@ -115,6 +115,13 @@ state, so a caller can confirm the `rev` moved.
 | `POST` | `/api/rooms/<room>/rundown` | Replaces the running order from CSV or JSON |
 | `GET` | `/api/qr?text=<url>` | An SVG QR code |
 | `GET` | `/healthz` | `ok` |
+
+### The speaker and the note
+
+A loaded cue carries a speaker and a note, and the viewer can show both. The
+speaker sits beside the title and starts visible. The note sits under the next
+up line and starts hidden, because a note often addresses the crew rather than
+the room. `?speaker=0` and `?notes=1` set them per screen.
 
 ### Clearing a room
 
@@ -175,8 +182,8 @@ monitor differ from the stage feed without touching the room:
 /keynote?clock=0&progress=0&mirror=1
 ```
 
-`clock`, `progress`, `mirror`, `blackout`, `sound` and `aux` each take `1` or
-`0`. Use
+`clock`, `progress`, `mirror`, `blackout`, `sound`, `aux`, `speaker` and
+`notes` each take `1` or `0`. Use
 `mirror` for a display behind teleprompter glass.
 
 `chime` sounds a tone when the timer reaches zero. It starts off, and one screen
