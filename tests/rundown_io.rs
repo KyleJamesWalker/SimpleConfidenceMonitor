@@ -239,7 +239,11 @@ fn a_field_holding_a_newline_survives_a_round_trip() {
     let csv = to_csv(&room.snapshot().rundown.cues);
 
     let back = parse_csv(&csv).unwrap();
-    assert_eq!(back.len(), 1, "a quoted newline must not split the row: {csv:?}");
+    assert_eq!(
+        back.len(),
+        1,
+        "a quoted newline must not split the row: {csv:?}"
+    );
     assert_eq!(back[0].title, "Keynote");
     assert_eq!(back[0].notes, "line one\nline two");
 }
