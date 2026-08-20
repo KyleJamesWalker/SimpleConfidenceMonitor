@@ -11,7 +11,9 @@ async fn get(uri: &str) -> (StatusCode, String) {
         .await
         .unwrap();
     let status = res.status();
-    let bytes = axum::body::to_bytes(res.into_body(), 1 << 20).await.unwrap();
+    let bytes = axum::body::to_bytes(res.into_body(), 1 << 20)
+        .await
+        .unwrap();
     (status, String::from_utf8_lossy(&bytes).to_string())
 }
 
@@ -40,7 +42,12 @@ async fn viewer_route_creates_the_room() {
     let hub = Hub::new();
     let app = router(hub.clone());
     let res = app
-        .oneshot(Request::builder().uri("/keynote").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri("/keynote")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);

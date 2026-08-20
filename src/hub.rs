@@ -32,7 +32,13 @@ impl Hub {
     }
 
     pub fn room_names(&self) -> Vec<RoomName> {
-        let mut names: Vec<RoomName> = self.rooms.read().expect("hub lock").keys().cloned().collect();
+        let mut names: Vec<RoomName> = self
+            .rooms
+            .read()
+            .expect("hub lock")
+            .keys()
+            .cloned()
+            .collect();
         names.sort();
         names
     }

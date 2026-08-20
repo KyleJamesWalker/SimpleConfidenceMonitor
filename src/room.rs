@@ -1,3 +1,9 @@
+use std::sync::Mutex;
+
+use serde::{Deserialize, Serialize};
+
+use crate::timer::{Mode, OnExpire, Timer};
+
 /// A validated room name, safe in a URL path and as a snapshot filename.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RoomName(String);
@@ -57,5 +63,71 @@ impl std::fmt::Display for RoomName {
     }
 }
 
+/// Everything a viewer needs to render the show.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct RoomState {
+    /// Increments on every command that changes state.
+    pub rev: u64,
+    pub timer: Timer,
+}
+
+/// One operator action. The same envelope arrives over the socket and over HTTP.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(tag = "cmd", rename_all = "snake_case")]
+pub enum Command {
+    Start,
+    Pause,
+    Reset,
+    SetDuration { ms: u64 },
+    Adjust { ms: i64 },
+    SetMode { mode: Mode },
+    SetThresholds { warn_ms: u64, danger_ms: u64 },
+    SetOnExpire { on_expire: OnExpire },
+}
+
+impl RoomState {
+    /// Applies one command. Returns true when the state changed.
+    pub fn apply(&mut self, cmd: &Command, now_ms: u64) -> bool {
+        let timer = &mut self.timer;
+        match cmd {
+            Command::Start => timer.start(now_ms),
+            Command::Pause => timer.pause(now_ms),
+            Command::Reset => timer.reset(),
+            Command::SetDuration { ms } => timer.set_duration(*ms),
+            Command::Adjust { ms } => timer.adjust(*ms),
+            Command::SetMode { mode } => timer.set_mode(*mode),
+            Command::SetThresholds { warn_ms, danger_ms } => {
+                let changed = timer.warn_ms != *warn_ms || timer.danger_ms != *danger_ms;
+                timer.warn_ms = *warn_ms;
+                timer.danger_ms = *danger_ms;
+                changed
+            }
+            Command::SetOnExpire { on_expire } => {
+                let changed = timer.on_expire != *on_expire;
+                timer.on_expire = *on_expire;
+                changed
+            }
+        }
+    }
+}
+
+/// A live room. Shared across every connected client.
 #[derive(Debug, Default)]
-pub struct Room {}
+pub struct Room {
+    state: Mutex<RoomState>,
+}
+
+impl Room {
+    pub fn snapshot(&self) -> RoomState {
+        self.state.lock().expect("room lock").clone()
+    }
+
+    /// Applies a command and returns the state every client should now see.
+    pub fn apply(&self, cmd: &Command, now_ms: u64) -> RoomState {
+        let mut state = self.state.lock().expect("room lock");
+        if state.apply(cmd, now_ms) {
+            state.rev += 1;
+        }
+        state.clone()
+    }
+}
