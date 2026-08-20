@@ -70,7 +70,8 @@ stack can set them that way instead.
 
 `deploy/portainer-stack.yml` is the same thing as a compose stack, for Portainer
 or plain `docker compose`. It needs `SCM_TOKEN` set, and takes `SCM_TAG`,
-`SCM_PORT` and `TZ`.
+`SCM_HOST_PORT` and `TZ`. The host port is separate from `SCM_PORT`, which is
+the port the server listens on inside the container.
 
 A pre-release tag such as `v1.1.0-rc1` publishes its own version tag and leaves
 `latest` where it was.
