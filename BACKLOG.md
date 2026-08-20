@@ -38,7 +38,7 @@ most, first.
       readout panel wastes vertical space.
 - [x] **Reduced motion.** The overtime blink and the flash ignore
       `prefers-reduced-motion`.
-- [ ] **More per-screen overrides.** `scale`, `title` and `next` are settable
+- [x] **More per-screen overrides.** `scale`, `title` and `next` are settable
       per room but not per screen.
 
 - [ ] **Preset editing on the console.** `set_presets` changes the quick

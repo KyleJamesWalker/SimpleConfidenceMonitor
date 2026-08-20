@@ -5,6 +5,7 @@ import {
   formatDuration,
   readout,
   roomFromPath,
+  screenOverrides,
   shouldChime,
 } from '/assets/shared.js';
 
@@ -29,8 +30,7 @@ const el = {
   auxTime: document.getElementById('auxTime'),
 };
 
-const params = new URLSearchParams(location.search);
-const override = (key) => (params.has(key) ? params.get(key) !== '0' : null);
+const overrides = screenOverrides(location.search);
 
 const room = roomFromPath();
 document.title = `${room} — confidence monitor`;
@@ -60,12 +60,13 @@ const socket = new RoomSocket({
 function applyState(frame) {
   const { display, message, timer } = frame;
   if (display) {
-    setText(el.title, display.show_title === false ? '' : display.title);
-    setText(el.next, display.next_up ? `Next: ${display.next_up}` : '');
+    setText(el.title, overrides.title ?? display.title);
+    const showNext = pick('next', true) && display.next_up;
+    setText(el.next, showNext ? `Next: ${display.next_up}` : '');
     el.stage.classList.toggle('mirror', pick('mirror', display.mirror));
     el.stage.classList.toggle('blackout-on', pick('blackout', display.blackout));
     el.progress.hidden = !pick('progress', display.show_progress);
-    el.stage.style.setProperty('--scale', (display.scale || 100) / 100);
+    el.stage.style.setProperty('--scale', (overrides.scale ?? display.scale ?? 100) / 100);
     if (display.flash_at && display.flash_at !== lastFlash) {
       lastFlash = display.flash_at;
       triggerFlash();
@@ -84,7 +85,7 @@ function applyState(frame) {
 }
 
 function pick(key, fallback) {
-  const chosen = override(key);
+  const chosen = overrides[key];
   return chosen === null ? Boolean(fallback) : chosen;
 }
 

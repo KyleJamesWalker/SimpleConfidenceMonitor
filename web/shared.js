@@ -166,6 +166,34 @@ export function nextClockTime(raw, nowMs) {
   return at.getTime();
 }
 
+// One screen can differ from the room without touching it. A flag reads true
+// unless it is zero. scale takes a number, and title replaces the text.
+export function screenOverrides(search) {
+  const params = new URLSearchParams(search);
+  const flag = (key) => (params.has(key) ? params.get(key) !== '0' : null);
+  const overrides = {
+    clock: flag('clock'),
+    progress: flag('progress'),
+    mirror: flag('mirror'),
+    blackout: flag('blackout'),
+    sound: flag('sound'),
+    aux: flag('aux'),
+    speaker: flag('speaker'),
+    notes: flag('notes'),
+    next: flag('next'),
+    scale: null,
+    title: params.has('title') ? params.get('title') : null,
+  };
+  if (params.has('scale')) {
+    const asked = Number(params.get('scale'));
+    const given = params.get('scale').trim();
+    if (given !== '' && Number.isFinite(asked)) {
+      overrides.scale = Math.min(200, Math.max(50, Math.round(asked)));
+    }
+  }
+  return overrides;
+}
+
 export function activeCue(rundown) {
   const cues = rundown?.cues || [];
   return cues.find((cue) => cue.id === rundown.active) || null;

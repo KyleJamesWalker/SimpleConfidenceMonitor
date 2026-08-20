@@ -179,11 +179,12 @@ A query parameter overrides one setting for one screen, which lets a booth
 monitor differ from the stage feed without touching the room:
 
 ```
-/keynote?clock=0&progress=0&mirror=1
+/keynote?clock=0&progress=0&mirror=1&scale=140&title=Booth
 ```
 
-`clock`, `progress`, `mirror`, `blackout`, `sound`, `aux`, `speaker` and
-`notes` each take `1` or `0`. Use
+`clock`, `progress`, `mirror`, `blackout`, `sound`, `aux`, `speaker`, `notes`
+and `next` each take `1` or `0`. `scale` takes a percent and clamps to 50 and
+200. `title` replaces the title text, and an empty `title=` blanks the line. Use
 `mirror` for a display behind teleprompter glass.
 
 `chime` sounds a tone when the timer reaches zero. It starts off, and one screen
