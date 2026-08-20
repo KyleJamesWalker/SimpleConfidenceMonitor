@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use clap::Parser;
 use simple_confidence_monitor::auth::Auth;
+use simple_confidence_monitor::autopilot::SCAN_INTERVAL;
 use simple_confidence_monitor::hub::Hub;
 use simple_confidence_monitor::persist::{Snapshots, Store};
 use simple_confidence_monitor::routes::{AppState, router};
@@ -70,6 +71,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let flusher_hub = hub.clone();
         let flusher = snapshots.clone();
         tokio::spawn(async move { flusher.run(&flusher_hub, SNAPSHOT_DEBOUNCE).await });
+    }
+
+    {
+        let pilot_hub = hub.clone();
+        tokio::spawn(async move {
+            simple_confidence_monitor::autopilot::run(&pilot_hub, SCAN_INTERVAL).await
+        });
     }
 
     let app = router(AppState::new(hub, auth));

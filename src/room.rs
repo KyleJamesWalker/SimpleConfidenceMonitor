@@ -6,7 +6,7 @@ use tokio::sync::broadcast;
 
 use crate::clock::now_ms;
 use crate::persist::Snapshots;
-use crate::timer::{Mode, OnExpire, Timer};
+use crate::timer::{Mode, OnExpire, Run, Timer};
 use crate::wire::ServerMsg;
 
 /// A validated room name, safe in a URL path and as a snapshot filename.
@@ -102,6 +102,9 @@ pub struct Display {
     pub flash_at: u64,
 }
 
+/// Duration for a cue added without one.
+pub const DEFAULT_CUE_MS: u64 = 5 * 60 * 1000;
+
 pub const MIN_SCALE: u8 = 50;
 pub const MAX_SCALE: u8 = 200;
 
@@ -121,6 +124,45 @@ impl Default for Display {
     }
 }
 
+/// One item in the running order.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct Cue {
+    pub id: u64,
+    pub title: String,
+    pub speaker: String,
+    pub duration_ms: u64,
+    pub notes: String,
+}
+
+/// The running order. An id is never reused, so a stale console cannot load
+/// the wrong cue after a removal.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct Rundown {
+    pub cues: Vec<Cue>,
+    pub active: Option<u64>,
+    pub auto_advance: bool,
+    next_id: u64,
+}
+
+impl Rundown {
+    pub fn position_of(&self, id: u64) -> Option<usize> {
+        self.cues.iter().position(|cue| cue.id == id)
+    }
+
+    pub fn cue(&self, id: u64) -> Option<&Cue> {
+        self.cues.iter().find(|cue| cue.id == id)
+    }
+
+    pub fn active_position(&self) -> Option<usize> {
+        self.active.and_then(|id| self.position_of(id))
+    }
+
+    fn take_id(&mut self) -> u64 {
+        self.next_id += 1;
+        self.next_id
+    }
+}
+
 /// Everything a viewer needs to render the show.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct RoomState {
@@ -129,6 +171,7 @@ pub struct RoomState {
     pub timer: Timer,
     pub message: Message,
     pub display: Display,
+    pub rundown: Rundown,
 }
 
 /// One operator action. The same envelope arrives over the socket and over HTTP.
@@ -172,6 +215,34 @@ pub enum Command {
         show_progress: Option<bool>,
         mirror: Option<bool>,
         scale: Option<u8>,
+    },
+    AddCue {
+        title: Option<String>,
+        speaker: Option<String>,
+        duration_ms: Option<u64>,
+        notes: Option<String>,
+    },
+    UpdateCue {
+        id: u64,
+        title: Option<String>,
+        speaker: Option<String>,
+        duration_ms: Option<u64>,
+        notes: Option<String>,
+    },
+    RemoveCue {
+        id: u64,
+    },
+    MoveCue {
+        id: u64,
+        to: usize,
+    },
+    LoadCue {
+        id: u64,
+    },
+    NextCue,
+    PrevCue,
+    SetAutoAdvance {
+        on: bool,
     },
 }
 
@@ -255,7 +326,123 @@ impl RoomState {
                 }
                 before != self.display
             }
+            Command::AddCue {
+                title,
+                speaker,
+                duration_ms,
+                notes,
+            } => {
+                let id = self.rundown.take_id();
+                self.rundown.cues.push(Cue {
+                    id,
+                    title: title.clone().unwrap_or_default(),
+                    speaker: speaker.clone().unwrap_or_default(),
+                    duration_ms: duration_ms.unwrap_or(DEFAULT_CUE_MS),
+                    notes: notes.clone().unwrap_or_default(),
+                });
+                true
+            }
+            Command::UpdateCue {
+                id,
+                title,
+                speaker,
+                duration_ms,
+                notes,
+            } => {
+                let Some(index) = self.rundown.position_of(*id) else {
+                    return false;
+                };
+                let before = self.rundown.cues[index].clone();
+                let cue = &mut self.rundown.cues[index];
+                if let Some(title) = title {
+                    cue.title = title.clone();
+                }
+                if let Some(speaker) = speaker {
+                    cue.speaker = speaker.clone();
+                }
+                if let Some(duration_ms) = duration_ms {
+                    cue.duration_ms = *duration_ms;
+                }
+                if let Some(notes) = notes {
+                    cue.notes = notes.clone();
+                }
+                let changed = before != self.rundown.cues[index];
+                if changed && self.rundown.active == Some(*id) {
+                    self.load_cue(*id, now_ms);
+                }
+                changed
+            }
+            Command::RemoveCue { id } => {
+                let Some(index) = self.rundown.position_of(*id) else {
+                    return false;
+                };
+                self.rundown.cues.remove(index);
+                if self.rundown.active == Some(*id) {
+                    self.rundown.active = None;
+                }
+                true
+            }
+            Command::MoveCue { id, to } => {
+                let Some(from) = self.rundown.position_of(*id) else {
+                    return false;
+                };
+                let target = (*to).min(self.rundown.cues.len().saturating_sub(1));
+                if from == target {
+                    return false;
+                }
+                let cue = self.rundown.cues.remove(from);
+                self.rundown.cues.insert(target, cue);
+                true
+            }
+            Command::LoadCue { id } => self.load_cue(*id, now_ms),
+            Command::NextCue => self.step(1, now_ms),
+            Command::PrevCue => self.step(-1, now_ms),
+            Command::SetAutoAdvance { on } => {
+                let changed = self.rundown.auto_advance != *on;
+                self.rundown.auto_advance = *on;
+                changed
+            }
         }
+    }
+
+    /// Points the timer and the screen at one cue. The timer starts from zero.
+    pub fn load_cue(&mut self, id: u64, _now_ms: u64) -> bool {
+        let Some(index) = self.rundown.position_of(id) else {
+            return false;
+        };
+        let cue = self.rundown.cues[index].clone();
+        let next_title = self
+            .rundown
+            .cues
+            .get(index + 1)
+            .map(|cue| cue.title.clone())
+            .unwrap_or_default();
+        self.rundown.active = Some(id);
+        self.timer.duration_ms = cue.duration_ms;
+        self.timer.run = Run::Stopped;
+        self.timer.elapsed_ms = 0;
+        self.display.title = cue.title;
+        self.display.next_up = next_title;
+        true
+    }
+
+    /// Moves the active cue by one step. Stops at either end.
+    fn step(&mut self, delta: i64, now_ms: u64) -> bool {
+        if self.rundown.cues.is_empty() {
+            return false;
+        }
+        let target = match self.rundown.active_position() {
+            None => 0,
+            Some(current) => {
+                let next = current as i64 + delta;
+                if next < 0 || next as usize >= self.rundown.cues.len() {
+                    return false;
+                }
+                next as usize
+            }
+        };
+        let id = self.rundown.cues[target].id;
+        self.load_cue(id, now_ms)
     }
 }
 

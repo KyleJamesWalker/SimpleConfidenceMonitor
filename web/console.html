@@ -107,6 +107,22 @@
         </label>
       </section>
 
+      <section class="panel rundown">
+        <h2>Rundown <span id="totals" class="totals"></span></h2>
+        <ol class="cues" id="cues"></ol>
+        <form class="cueForm" id="cueForm">
+          <input id="cueTitle" type="text" placeholder="Cue title" autocomplete="off" />
+          <input id="cueSpeaker" type="text" placeholder="Speaker" autocomplete="off" />
+          <input id="cueMinutes" type="text" inputmode="numeric" placeholder="10:00" />
+          <button type="submit">Add cue</button>
+        </form>
+        <div class="transport">
+          <button id="prevCue">Previous</button>
+          <button id="nextCue" class="primary">Next cue</button>
+          <button id="autoAdvance" data-toggle>Auto advance</button>
+        </div>
+      </section>
+
       <section class="panel keys">
         <h2>Keys</h2>
         <ul>
@@ -115,6 +131,7 @@
           <li><kbd>b</kbd> blackout</li>
           <li><kbd>f</kbd> flash</li>
           <li><kbd>enter</kbd> send the message (in the message box)</li>
+          <li><kbd>n</kbd> next cue, <kbd>p</kbd> previous cue</li>
         </ul>
       </section>
     </main>

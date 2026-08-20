@@ -1,5 +1,6 @@
 pub mod assets;
 pub mod auth;
+pub mod autopilot;
 pub mod clock;
 pub mod hub;
 pub mod persist;

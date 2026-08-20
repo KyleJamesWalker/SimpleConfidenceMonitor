@@ -5,6 +5,7 @@ import {
   parseDuration,
   readout,
   roomFromPath,
+  rundownTotals,
 } from '/assets/shared.js';
 
 const el = (id) => document.getElementById(id);
@@ -20,6 +21,7 @@ const TOGGLES = {
   clock24h: (on) => ({ cmd: 'display', clock_24h: on }),
   showProgress: (on) => ({ cmd: 'display', show_progress: on }),
   mirror: (on) => ({ cmd: 'display', mirror: on }),
+  autoAdvance: (on) => ({ cmd: 'set_auto_advance', on }),
 };
 const TOGGLE_STATE = {
   blackout: (frame) => frame.display.blackout,
@@ -27,6 +29,7 @@ const TOGGLE_STATE = {
   clock24h: (frame) => frame.display.clock_24h,
   showProgress: (frame) => frame.display.show_progress,
   mirror: (frame) => frame.display.mirror,
+  autoAdvance: (frame) => frame.rundown.auto_advance,
 };
 
 let state = null;
@@ -93,7 +96,60 @@ function applyState(frame) {
     el(id).classList.toggle('on', Boolean(read(frame)));
   }
   el('showMessage').classList.toggle('on', message.visible && Boolean(message.text));
+  drawRundown(frame);
   render();
+}
+
+function drawRundown(frame) {
+  const { rundown } = frame;
+  const list = el('cues');
+  list.replaceChildren();
+  for (const [index, cue] of rundown.cues.entries()) {
+    const item = document.createElement('li');
+    if (cue.id === rundown.active) item.classList.add('active');
+
+    const position = document.createElement('span');
+    position.className = 'index';
+    position.textContent = index + 1;
+
+    const label = document.createElement('span');
+    label.textContent = cue.title || '(untitled)';
+    if (cue.speaker) {
+      const who = document.createElement('span');
+      who.className = 'who';
+      who.textContent = ` ${cue.speaker}`;
+      label.append(who);
+    }
+
+    const length = document.createElement('span');
+    length.className = 'len';
+    length.textContent = formatDuration(cue.duration_ms);
+
+    const actions = document.createElement('span');
+    actions.className = 'actions';
+    actions.append(
+      action('Load', () => send({ cmd: 'load_cue', id: cue.id })),
+      action('Up', () => send({ cmd: 'move_cue', id: cue.id, to: Math.max(0, index - 1) })),
+      action('Down', () => send({ cmd: 'move_cue', id: cue.id, to: index + 1 })),
+      action('X', () => send({ cmd: 'remove_cue', id: cue.id })),
+    );
+
+    item.append(position, label, length, actions);
+    list.append(item);
+  }
+
+  const totals = rundownTotals(rundown, readout(frame.timer, socket.serverNow()).remainingMs);
+  el('totals').textContent = totals.cueCount
+    ? `${totals.cueCount} cues · ${formatDuration(totals.remainingMs)} left of ${formatDuration(totals.totalMs)}`
+    : '';
+}
+
+function action(label, onClick) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = label;
+  button.addEventListener('click', onClick);
+  return button;
 }
 
 function render() {
@@ -189,6 +245,29 @@ for (const button of document.querySelectorAll('.tone')) {
   });
 }
 
+el('nextCue').addEventListener('click', () => send({ cmd: 'next_cue' }));
+el('prevCue').addEventListener('click', () => send({ cmd: 'prev_cue' }));
+
+el('cueForm').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const minutes = el('cueMinutes').value.trim();
+  const duration = minutes ? parseDuration(minutes) : 5 * MIN;
+  if (duration === null) {
+    toast('Cue length takes minutes, or mm:ss');
+    return;
+  }
+  send({
+    cmd: 'add_cue',
+    title: el('cueTitle').value.trim(),
+    speaker: el('cueSpeaker').value.trim(),
+    duration_ms: duration,
+  });
+  for (const id of ['cueTitle', 'cueSpeaker', 'cueMinutes']) {
+    el(id).value = '';
+  }
+  el('cueTitle').focus();
+});
+
 el('showMessage').addEventListener('click', showMessage);
 el('hideMessage').addEventListener('click', () => send({ cmd: 'message', visible: false }));
 
@@ -212,6 +291,8 @@ document.addEventListener('keydown', (event) => {
     r: () => send({ cmd: 'reset' }),
     b: () => send({ cmd: 'blackout', on: !state?.display.blackout }),
     f: () => send({ cmd: 'flash' }),
+    n: () => send({ cmd: 'next_cue' }),
+    p: () => send({ cmd: 'prev_cue' }),
   };
   const action = keys[event.key.toLowerCase()];
   if (action) {

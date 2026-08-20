@@ -296,3 +296,77 @@ kbd {
   font-size: 0.8rem;
   color: var(--fg);
 }
+
+.rundown {
+  grid-column: 1 / -1;
+}
+
+.totals {
+  float: right;
+  text-transform: none;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.cues {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.cues li {
+  display: grid;
+  grid-template-columns: 1.6rem 1fr auto auto;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #101015;
+}
+
+.cues li.active {
+  border-color: var(--accent);
+  background: #14203a;
+}
+
+.cues .index {
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+
+.cues .who {
+  color: var(--dim);
+  font-size: 0.85rem;
+}
+
+.cues .len {
+  font-variant-numeric: tabular-nums;
+  color: var(--dim);
+}
+
+.cues .actions {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.cues .actions button {
+  min-height: 32px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.cueForm {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 0.8fr auto;
+  gap: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .cueForm {
+    grid-template-columns: 1fr;
+  }
+}

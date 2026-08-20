@@ -153,6 +153,25 @@ export function parseDuration(raw) {
   return parts.map(Number).reduce((total, part) => total * 60 + part, 0) * 1000;
 }
 
+// Time left in the plan: what remains of the active cue, plus every cue after it.
+export function rundownTotals(rundown, activeRemainingMs) {
+  const cues = rundown.cues || [];
+  const totalMs = cues.reduce((sum, cue) => sum + cue.duration_ms, 0);
+  const activeIndex = cues.findIndex((cue) => cue.id === rundown.active);
+  const afterMs = cues
+    .slice(activeIndex + 1)
+    .reduce((sum, cue) => (activeIndex < 0 ? sum : sum + cue.duration_ms), 0);
+  const remainingMs =
+    activeIndex < 0 ? totalMs : Math.max(0, activeRemainingMs) + afterMs;
+  return {
+    cueCount: cues.length,
+    activeIndex,
+    totalMs,
+    remainingMs,
+    doneMs: Math.max(0, totalMs - remainingMs),
+  };
+}
+
 // The server rejects anything outside a-z, 0-9, dash and underscore.
 export function normalizeRoomName(raw) {
   return String(raw)
