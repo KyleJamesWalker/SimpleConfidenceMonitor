@@ -62,17 +62,22 @@ The image is Alpine with the static Linux binary, running as a non-root user. It
 serves on 8080 and keeps snapshots in `/data`, so mount a volume there to keep
 rooms across a restart.
 
-The port and the state directory sit in the image `ENTRYPOINT` rather than its
-`CMD`. Arguments after the image name are added to them rather than replacing
-them, so passing `--token` cannot silently turn persistence off.
+The port and the state directory arrive as `SCM_PORT` and `SCM_STATE_DIR`
+environment variables in the image, not as arguments. Passing `--token` cannot
+turn persistence off, and `--port` or `--state-dir` override the image defaults
+rather than colliding with them. Every flag has an environment variable, so a
+stack can set them that way instead.
 
 `deploy/portainer-stack.yml` is the same thing as a compose stack, for Portainer
 or plain `docker compose`. It needs `SCM_TOKEN` set, and takes `SCM_TAG`,
 `SCM_PORT` and `TZ`.
 
+A pre-release tag such as `v1.1.0-rc1` publishes its own version tag and leaves
+`latest` where it was.
+
 | Tag | Points at |
 |---|---|
-| `latest` | The most recent release |
+| `latest` | The most recent release, pre-releases excluded |
 | `vX.Y.Z` | That release |
 | `edge` | The current `main` |
 | `pr-<number>` | An open pull request |
