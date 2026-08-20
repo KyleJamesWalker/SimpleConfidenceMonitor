@@ -168,3 +168,31 @@ async fn the_state_frame_carries_the_display_settings() {
     assert_eq!(frame["display"]["blackout"], false);
     assert_eq!(frame["display"]["title"], "");
 }
+
+#[tokio::test]
+async fn deleting_a_room_closes_the_sockets_it_holds() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let hub = Hub::new();
+    let app = router(AppState::open(hub.clone()));
+    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+
+    let mut editor = connect(addr, "keynote", "edit").await;
+    next_frame(&mut editor, "state").await;
+
+    hub.remove(&simple_confidence_monitor::room::RoomName::parse("keynote").unwrap());
+
+    // The socket must end rather than keep driving a room nobody can reach.
+    let closed = tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        loop {
+            match editor.next().await {
+                None => return true,
+                Some(Err(_)) => return true,
+                Some(Ok(Message::Close(_))) => return true,
+                Some(Ok(_)) => continue,
+            }
+        }
+    })
+    .await;
+    assert_eq!(closed, Ok(true), "the socket should close with the room");
+}

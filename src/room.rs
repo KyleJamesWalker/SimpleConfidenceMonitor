@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
@@ -696,6 +696,7 @@ pub struct Room {
     viewers: AtomicUsize,
     editors: AtomicUsize,
     snapshots: Option<Arc<Snapshots>>,
+    closed: AtomicBool,
 }
 
 impl Default for Room {
@@ -720,6 +721,7 @@ impl Room {
             viewers: AtomicUsize::new(0),
             editors: AtomicUsize::new(0),
             snapshots,
+            closed: AtomicBool::new(false),
         }
     }
 
@@ -755,8 +757,22 @@ impl Room {
         serde_json::to_string(&msg).expect("state frame serializes")
     }
 
+    pub fn is_closed(&self) -> bool {
+        self.closed.load(Ordering::Relaxed)
+    }
+
+    /// Retires the room. Sockets holding it end, and it takes no more commands,
+    /// so a client that was mid-session cannot drive a room nobody can reach.
+    pub fn close(&self) {
+        self.closed.store(true, Ordering::Relaxed);
+        self.publish();
+    }
+
     /// Applies a command, tells every client, and returns the new state.
     pub fn apply(&self, cmd: &Command, now_ms: u64) -> RoomState {
+        if self.is_closed() {
+            return self.snapshot();
+        }
         let (next, changed) = {
             let mut state = self.state.lock().expect("room lock");
             let changed = state.apply(cmd, now_ms);

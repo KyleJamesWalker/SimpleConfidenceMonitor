@@ -43,11 +43,14 @@ impl Hub {
     /// Drops a room from the registry and forgets its snapshot. Returns whether
     /// it was there.
     pub fn remove(&self, name: &RoomName) -> bool {
-        let existed = self.rooms.write().expect("hub lock").remove(name).is_some();
+        let removed = self.rooms.write().expect("hub lock").remove(name);
+        if let Some(room) = &removed {
+            room.close();
+        }
         if let Some(snapshots) = &self.snapshots {
             snapshots.forget(name);
         }
-        existed
+        removed.is_some()
     }
 
     /// Puts loaded rooms back in place at startup.

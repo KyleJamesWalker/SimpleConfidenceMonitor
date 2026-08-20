@@ -78,6 +78,9 @@ pub async fn serve_socket(socket: WebSocket, room: Arc<Room>, role: Role) {
                 if sink.send(Message::text(text)).await.is_err() {
                     break;
                 }
+                if room.is_closed() {
+                    break;
+                }
             }
             _ = keepalive.tick() => {
                 if sink.send(Message::text(room.frame())).await.is_err() {

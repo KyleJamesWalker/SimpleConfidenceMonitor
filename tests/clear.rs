@@ -104,3 +104,28 @@ fn removing_a_room_that_is_not_there_reports_it() {
     let hub = Hub::new();
     assert!(!hub.remove(&RoomName::parse("ghost").unwrap()));
 }
+
+#[test]
+fn a_deleted_room_stops_taking_commands() {
+    let hub = Hub::new();
+    let name = RoomName::parse("keynote").unwrap();
+    let room = hub.get_or_create(&name);
+    room.apply(&Command::SetDuration { ms: 60_000 }, T0);
+    assert!(hub.remove(&name));
+
+    // A socket still holding this Arc must not be able to drive a ghost room.
+    let after = room.apply(&Command::Start, T0);
+    assert!(
+        !after.timer.is_running(),
+        "a removed room takes no commands"
+    );
+    assert!(room.is_closed());
+}
+
+#[test]
+fn a_live_room_is_not_closed() {
+    let hub = Hub::new();
+    let room = hub.get_or_create(&RoomName::parse("keynote").unwrap());
+    assert!(!room.is_closed());
+    assert!(room.apply(&Command::Start, T0).timer.is_running());
+}
