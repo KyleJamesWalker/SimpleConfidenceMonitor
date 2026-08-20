@@ -770,14 +770,23 @@ impl Room {
 
     /// Applies a command, tells every client, and returns the new state.
     pub fn apply(&self, cmd: &Command, now_ms: u64) -> RoomState {
+        self.apply_all(std::slice::from_ref(cmd), now_ms)
+    }
+
+    /// Applies several commands under one lock and publishes once. A client
+    /// never sees the room between two halves of one operator action.
+    pub fn apply_all(&self, cmds: &[Command], now_ms: u64) -> RoomState {
         if self.is_closed() {
             return self.snapshot();
         }
         let (next, changed) = {
             let mut state = self.state.lock().expect("room lock");
-            let changed = state.apply(cmd, now_ms);
-            if changed {
-                state.rev += 1;
+            let mut changed = false;
+            for cmd in cmds {
+                if state.apply(cmd, now_ms) {
+                    state.rev += 1;
+                    changed = true;
+                }
             }
             (state.clone(), changed)
         };

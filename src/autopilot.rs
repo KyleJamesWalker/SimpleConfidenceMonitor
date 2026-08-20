@@ -37,8 +37,7 @@ pub fn advance_expired(hub: &Hub, now_ms: u64) -> usize {
         let Some(next) = state.rundown.cues.get(position + 1) else {
             continue;
         };
-        room.apply(&Command::LoadCue { id: next.id }, now_ms);
-        room.apply(&Command::Start, now_ms);
+        room.apply_all(&[Command::LoadCue { id: next.id }, Command::Start], now_ms);
         advanced += 1;
     }
     advanced

@@ -119,3 +119,22 @@ fn every_expired_room_advances_in_one_pass() {
     hub.get_or_create(&RoomName::parse("idle").unwrap());
     assert_eq!(advance_expired(&hub, T0 + 5 * MIN), 2);
 }
+
+#[test]
+fn an_advance_lands_in_one_step() {
+    let hub = Hub::new();
+    let (room, ids) = running_room(&hub, "keynote");
+    let mut frames = room.subscribe();
+
+    assert_eq!(advance_expired(&hub, T0 + 5 * MIN), 1);
+
+    // One command, one frame: a console must never see a half-advanced room.
+    let first = frames.try_recv().expect("an advance should publish once");
+    let state: serde_json::Value = serde_json::from_str(&first).unwrap();
+    assert_eq!(state["rundown"]["active"], ids[1]);
+    assert_eq!(state["timer"]["run"]["state"], "running");
+    assert!(
+        frames.try_recv().is_err(),
+        "a second frame means the room was visible mid-advance"
+    );
+}
