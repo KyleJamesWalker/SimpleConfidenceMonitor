@@ -1,2 +1,8 @@
 target/
-.claude/scheduled_tasks.lock
+debug/
+**/*.rs.bk
+*.pdb
+**/mutants.out*/
+
+.DS_Store
+.claude/
