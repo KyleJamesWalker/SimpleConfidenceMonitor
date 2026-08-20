@@ -34,7 +34,7 @@ most, first.
 
 - [x] **Toggle styling.** A toggle that is on looks the same as a primary
       action, because both are blue. The on state has to read at a glance.
-- [ ] **Console layout.** The nudge row wraps badly in a narrow column, and the
+- [x] **Console layout.** The nudge row wraps badly in a narrow column, and the
       readout panel wastes vertical space.
 - [x] **Reduced motion.** The overtime blink and the flash ignore
       `prefers-reduced-motion`.
