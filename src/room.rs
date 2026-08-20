@@ -354,6 +354,9 @@ pub enum Command {
     },
     NextCue,
     PrevCue,
+    /// Load the following cue and run it, which is what an operator wants when
+    /// one talk ends and the next begins.
+    NextAndStart,
     SetAutoAdvance {
         on: bool,
     },
@@ -493,6 +496,7 @@ impl RoomState {
                     duration_ms: duration_ms.unwrap_or(DEFAULT_CUE_MS),
                     notes: notes.clone().unwrap_or_default(),
                 });
+                self.resync_screen(self.rundown.active);
                 true
             }
             Command::UpdateCue {
@@ -520,8 +524,8 @@ impl RoomState {
                     cue.notes = notes.clone();
                 }
                 let changed = before != self.rundown.cues[index];
-                if changed && self.rundown.active == Some(*id) {
-                    self.point_at_active_cue();
+                if changed {
+                    self.resync_screen(self.rundown.active);
                 }
                 changed
             }
@@ -529,10 +533,12 @@ impl RoomState {
                 let Some(index) = self.rundown.position_of(*id) else {
                     return false;
                 };
+                let had_active = self.rundown.active;
                 self.rundown.cues.remove(index);
-                if self.rundown.active == Some(*id) {
+                if had_active == Some(*id) {
                     self.rundown.active = None;
                 }
+                self.resync_screen(had_active);
                 true
             }
             Command::MoveCue { id, to } => {
@@ -545,11 +551,19 @@ impl RoomState {
                 }
                 let cue = self.rundown.cues.remove(from);
                 self.rundown.cues.insert(target, cue);
+                self.resync_screen(self.rundown.active);
                 true
             }
             Command::LoadCue { id } => self.load_cue(*id, now_ms),
             Command::NextCue => self.step(1, now_ms),
             Command::PrevCue => self.step(-1, now_ms),
+            Command::NextAndStart => {
+                let moved = self.step(1, now_ms);
+                if moved {
+                    self.timer.start(now_ms);
+                }
+                moved
+            }
             Command::SetAutoAdvance { on } => {
                 let changed = self.rundown.auto_advance != *on;
                 self.rundown.auto_advance = *on;
@@ -595,13 +609,8 @@ impl RoomState {
                         notes: draft.notes.clone(),
                     })
                     .collect();
-                if self
-                    .rundown
-                    .active
-                    .is_some_and(|id| self.rundown.position_of(id).is_none())
-                {
-                    self.rundown.active = None;
-                }
+                let had_active = self.rundown.active;
+                self.resync_screen(had_active);
                 true
             }
             Command::SendPreset { index } => {
@@ -645,6 +654,19 @@ impl RoomState {
         self.timer.elapsed_ms = 0;
         self.timer.start_at_ms = None;
         true
+    }
+
+    /// Keeps the screen in step with the running order. While a cue is loaded
+    /// the title and the next-up line come from it, so any edit to the list
+    /// refreshes them. Losing that cue clears both, since nobody typed them.
+    fn resync_screen(&mut self, had_active: Option<u64>) {
+        if self.rundown.active_position().is_some() {
+            self.point_at_active_cue();
+        } else if had_active.is_some() {
+            self.rundown.active = None;
+            self.display.title.clear();
+            self.display.next_up.clear();
+        }
     }
 
     /// Copies the active cue onto the screen and the timer target, and leaves

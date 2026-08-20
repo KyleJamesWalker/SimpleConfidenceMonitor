@@ -1,4 +1,4 @@
-use simple_confidence_monitor::room::{Command, Room, RoomState};
+use simple_confidence_monitor::room::{Command, CueDraft, Room, RoomState};
 use simple_confidence_monitor::timer::Run;
 
 const T0: u64 = 1_700_000_000_000;
@@ -324,4 +324,192 @@ fn changing_the_active_cue_duration_retargets_a_running_timer() {
     );
     assert_eq!(state.timer.duration_ms, 45 * MIN);
     assert_eq!(state.timer.run, Run::Running { since_ms: T0 });
+}
+
+#[test]
+fn next_and_start_loads_the_following_cue_and_runs_it() {
+    let room = Room::default();
+    let ids = with_cues(&room);
+    room.apply(&Command::LoadCue { id: ids[0] }, T0);
+
+    let state = room.apply(&Command::NextAndStart, T0 + MIN);
+    assert_eq!(state.rundown.active, Some(ids[1]));
+    assert_eq!(state.timer.run, Run::Running { since_ms: T0 + MIN });
+    assert_eq!(state.timer.duration_ms, 30 * MIN);
+    assert_eq!(state.timer.elapsed_ms, 0);
+}
+
+#[test]
+fn next_and_start_with_nothing_loaded_runs_the_first_cue() {
+    let room = Room::default();
+    let ids = with_cues(&room);
+    let state = room.apply(&Command::NextAndStart, T0);
+    assert_eq!(state.rundown.active, Some(ids[0]));
+    assert!(state.timer.is_running());
+}
+
+#[test]
+fn next_and_start_on_the_last_cue_leaves_it_alone() {
+    let room = Room::default();
+    let ids = with_cues(&room);
+    room.apply(&Command::LoadCue { id: ids[2] }, T0);
+    room.apply(&Command::Start, T0);
+    let before = room.snapshot();
+
+    let state = room.apply(&Command::NextAndStart, T0 + MIN);
+    assert_eq!(state.rundown.active, Some(ids[2]), "nowhere to go");
+    assert_eq!(state.rev, before.rev, "a no-op must not wake the screens");
+    assert_eq!(
+        state.timer.run,
+        Run::Running { since_ms: T0 },
+        "the running talk keeps its clock"
+    );
+}
+
+#[test]
+fn next_and_start_on_an_empty_rundown_changes_nothing() {
+    let room = Room::default();
+    let state = room.apply(&Command::NextAndStart, T0);
+    assert_eq!(state.rev, 0);
+    assert!(!state.timer.is_running());
+}
+
+#[test]
+fn next_and_start_lands_in_one_revision() {
+    let room = Room::default();
+    let ids = with_cues(&room);
+    room.apply(&Command::LoadCue { id: ids[0] }, T0);
+    let before = room.snapshot().rev;
+    let state = room.apply(&Command::NextAndStart, T0);
+    assert_eq!(state.rev, before + 1, "one operator action, one revision");
+}
+
+#[test]
+fn parses_next_and_start() {
+    assert_eq!(parse(r#"{"cmd":"next_and_start"}"#), Command::NextAndStart);
+}
+
+#[test]
+fn deleting_the_active_cue_clears_the_screen() {
+    let room = Room::default();
+    let ids = with_cues(&room);
+    room.apply(&Command::LoadCue { id: ids[0] }, T0);
+    let state = room.apply(&Command::RemoveCue { id: ids[0] }, T0);
+    assert_eq!(state.display.title, "", "the title came from that cue");
+    assert_eq!(state.display.next_up, "");
+    assert_eq!(state.rundown.active, None);
+}
+
+#[test]
+fn deleting_every_cue_leaves_a_bare_timer() {
+    let room = Room::default();
+    let ids = with_cues(&room);
+    room.apply(&Command::LoadCue { id: ids[0] }, T0);
+    for id in &ids {
+        room.apply(&Command::RemoveCue { id: *id }, T0);
+    }
+    let state = room.snapshot();
+    assert!(state.rundown.cues.is_empty());
+    assert_eq!(state.display.title, "");
+    assert_eq!(state.display.next_up, "");
+}
+
+#[test]
+fn deleting_the_cue_that_was_next_moves_the_next_up_line() {
+    let room = Room::default();
+    let ids = with_cues(&room);
+    room.apply(&Command::LoadCue { id: ids[0] }, T0);
+    assert_eq!(room.snapshot().display.next_up, "Keynote");
+
+    let state = room.apply(&Command::RemoveCue { id: ids[1] }, T0);
+    assert_eq!(state.display.next_up, "Panel", "the line follows the list");
+    assert_eq!(
+        state.display.title, "Welcome",
+        "the active cue is untouched"
+    );
+}
+
+#[test]
+fn adding_a_cue_after_the_last_one_fills_the_next_up_line() {
+    let room = Room::default();
+    let ids = with_cues(&room);
+    room.apply(&Command::LoadCue { id: ids[2] }, T0);
+    assert_eq!(room.snapshot().display.next_up, "");
+
+    let state = room.apply(&add("Closing", 10), T0);
+    assert_eq!(state.display.next_up, "Closing");
+}
+
+#[test]
+fn renaming_the_following_cue_updates_the_next_up_line() {
+    let room = Room::default();
+    let ids = with_cues(&room);
+    room.apply(&Command::LoadCue { id: ids[0] }, T0);
+    let state = room.apply(
+        &Command::UpdateCue {
+            id: ids[1],
+            title: Some("Keynote: rescheduled".into()),
+            speaker: None,
+            duration_ms: None,
+            notes: None,
+        },
+        T0,
+    );
+    assert_eq!(state.display.next_up, "Keynote: rescheduled");
+}
+
+#[test]
+fn reordering_the_rundown_updates_the_next_up_line() {
+    let room = Room::default();
+    let ids = with_cues(&room);
+    room.apply(&Command::LoadCue { id: ids[0] }, T0);
+    let state = room.apply(&Command::MoveCue { id: ids[2], to: 1 }, T0);
+    assert_eq!(state.display.next_up, "Panel");
+}
+
+#[test]
+fn replacing_the_rundown_clears_a_screen_whose_cue_is_gone() {
+    let room = Room::default();
+    let ids = with_cues(&room);
+    room.apply(&Command::LoadCue { id: ids[0] }, T0);
+    let state = room.apply(
+        &Command::SetCues {
+            cues: vec![CueDraft {
+                title: "Something else".into(),
+                speaker: String::new(),
+                duration_ms: 5 * MIN,
+                notes: String::new(),
+            }],
+        },
+        T0,
+    );
+    assert_eq!(state.rundown.active, None);
+    assert_eq!(state.display.title, "");
+    assert_eq!(state.display.next_up, "");
+}
+
+#[test]
+fn a_typed_title_survives_a_rundown_edit_when_no_cue_is_loaded() {
+    let room = Room::default();
+    room.apply(
+        &Command::Display {
+            title: Some("Morning session".into()),
+            next_up: Some("Lunch".into()),
+            show_clock: None,
+            clock_24h: None,
+            show_progress: None,
+            mirror: None,
+            scale: None,
+            chime: None,
+            show_speaker: None,
+            show_notes: None,
+        },
+        T0,
+    );
+    let state = room.apply(&add("Welcome", 5), T0);
+    assert_eq!(
+        state.display.title, "Morning session",
+        "nobody asked to change it"
+    );
+    assert_eq!(state.display.next_up, "Lunch");
 }
