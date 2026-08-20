@@ -392,3 +392,9 @@ kbd {
 .preset.tone-alert {
   border-left-color: var(--danger);
 }
+
+@media (prefers-reduced-motion: reduce) {
+ button:active {
+ transform: none;
+ }
+}

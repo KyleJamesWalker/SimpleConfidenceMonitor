@@ -250,3 +250,23 @@ body {
 .soundHint[hidden] {
   display: none;
 }
+
+@media (prefers-reduced-motion: reduce) {
+ .timer.expired.blink {
+ animation: none;
+ }
+
+ .flash.on {
+ animation: none;
+ opacity: 0.5;
+ }
+
+ .timer,
+ .message,
+ .bar,
+ .blackout,
+ .fullscreen,
+ .soundHint {
+ transition: none;
+ }
+}
