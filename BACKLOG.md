@@ -8,7 +8,7 @@ most, first.
 
 ## Features
 
-- [ ] **Message presets.** Named quick messages on the console, one press to
+- [x] **Message presets.** Named quick messages on the console, one press to
       send. Every product in the survey has them, and typing during a talk is
       the thing an operator has no hands for.
 - [x] **Sound on expiry.** A tone when a cue reaches zero, unlocked by the first
@@ -36,7 +36,7 @@ most, first.
       action, because both are blue. The on state has to read at a glance.
 - [ ] **Console layout.** The nudge row wraps badly in a narrow column, and the
       readout panel wastes vertical space.
-- [ ] **Reduced motion.** The overtime blink and the flash ignore
+- [x] **Reduced motion.** The overtime blink and the flash ignore
       `prefers-reduced-motion`.
 - [ ] **More per-screen overrides.** `scale`, `title` and `next` are settable
       per room but not per screen.
