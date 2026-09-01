@@ -15,6 +15,7 @@ const room = roomFromPath();
 document.title = `${room} — console`;
 el('roomName').textContent = room;
 el('viewerLink').href = `/${room}`;
+el('agendaLink').href = `/${room}/agenda`;
 
 const QUICK_MINUTES = [5, 10, 15, 20, 30];
 const TONES = ['neutral', 'warn', 'alert'];

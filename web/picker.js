@@ -10,6 +10,7 @@ function showLinks(room) {
   const links = urls(room);
   el('viewerUrl').value = links.viewer;
   el('consoleUrl').value = links.console;
+  el('agendaUrl').value = links.agenda;
   el('qr').src = `/api/qr?text=${encodeURIComponent(links.viewer)}`;
   el('linksPanel').hidden = false;
 }
@@ -68,13 +69,16 @@ async function loadRooms() {
       const edit = document.createElement('a');
       edit.href = urls(room).console;
       edit.textContent = 'console';
+      const agenda = document.createElement('a');
+      agenda.href = `/${room}/agenda`;
+      agenda.textContent = 'agenda';
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'removeRoom';
       remove.textContent = 'delete';
       remove.addEventListener('click', () => deleteRoom(room));
 
-      item.append(name, view, edit, remove);
+      item.append(name, view, edit, agenda, remove);
       list.append(item);
     }
   } catch {
