@@ -38,6 +38,11 @@ test('builds a console link that carries the token', () => {
   assert.equal(links.console, 'http://192.168.1.20:8080/keynote/edit?token=s3cret');
 });
 
+test('builds an agenda link that carries no token', () => {
+  const links = roomLinks('http://192.168.1.20:8080', 'keynote', 's3cret');
+  assert.equal(links.agenda, 'http://192.168.1.20:8080/keynote/agenda');
+});
+
 test('omits the query when there is no token', () => {
   const links = roomLinks('http://host', 'keynote', '');
   assert.equal(links.console, 'http://host/keynote/edit');

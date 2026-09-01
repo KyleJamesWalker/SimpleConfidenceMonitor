@@ -309,6 +309,7 @@ export function roomLinks(origin, room, token) {
   return {
     viewer: `${origin}/${room}`,
     console: `${origin}/${room}/edit${suffix}`,
+    agenda: `${origin}/${room}/agenda`,
   };
 }
 
