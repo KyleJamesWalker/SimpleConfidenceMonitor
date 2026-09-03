@@ -2,6 +2,7 @@ import {
   agendaSignature,
   RoomSocket,
   formatClock,
+  formatClockToMinute,
   formatDuration,
   projectAgenda,
   readout,
@@ -35,7 +36,9 @@ function draw() {
   const now = socket.serverNow();
   const out = readout(state.timer, now);
   const rows = projectAgenda(state.rundown, out.remainingMs, now);
-  const signature = agendaSignature(rows);
+  // The clock format belongs here too, or switching it leaves the columns in
+  // the old shape until a row's minute turns.
+  const signature = `${use24h()}|${agendaSignature(rows)}`;
   if (painted.signature === signature) return;
   painted.signature = signature;
 
@@ -88,10 +91,12 @@ function rowNode(row) {
   return item;
 }
 
+function use24h() {
+  return state?.display?.clock_24h ?? true;
+}
+
 function clockOf(ms) {
-  const at = new Date(ms);
-  const use24h = state?.display?.clock_24h ?? true;
-  return formatClock(at, use24h).slice(0, use24h ? 5 : undefined);
+  return formatClockToMinute(new Date(ms), use24h());
 }
 
 function tick() {
@@ -104,7 +109,7 @@ function tick() {
       el('timer').className = `timer ${out.phase}`;
       painted.timer = timer;
     }
-    const clock = formatClock(new Date(now), state.display?.clock_24h ?? true);
+    const clock = formatClock(new Date(now), use24h());
     if (painted.clock !== clock) {
       el('clock').textContent = clock;
       painted.clock = clock;

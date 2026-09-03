@@ -36,7 +36,7 @@ fn advance_room(room: &Room, now_ms: u64) -> bool {
         Move::Nothing => false,
         Move::Start => room.apply_if(|state| is_due(state, now_ms), &[Command::Start], now_ms),
         Move::Advance { active, next } => room.apply_if(
-            |state| ran_out(state, now_ms) && state.rundown.active == Some(active),
+            |state| ran_out(state, now_ms) && follows(state, active, next),
             &[Command::LoadCue { id: next }, Command::Start],
             now_ms,
         ),
@@ -61,6 +61,18 @@ fn next_move(state: &RoomState, now_ms: u64) -> Move {
         },
         None => Move::Nothing,
     }
+}
+
+/// The room still sits on `active`, and `next` still comes after it. An edit
+/// inside the window changes which cue is next, and the scan takes none.
+fn follows(state: &RoomState, active: u64, next: u64) -> bool {
+    state.rundown.active == Some(active)
+        && state
+            .rundown
+            .active_position()
+            .and_then(|position| state.rundown.cues.get(position + 1))
+            .map(|cue| cue.id)
+            == Some(next)
 }
 
 /// An armed start whose clock time has come.

@@ -232,9 +232,11 @@ el.soundHint.addEventListener('click', () => {
 // a LAN address there is nothing to call: see docs/operations.md. The spec also
 // drops the lock whenever the document hides, so ask again on the way back.
 let wakeLock = null;
+let asking = false;
 
 async function requestWakeLock() {
-  if (wakeLock || !('wakeLock' in navigator) || document.hidden) return;
+  if (wakeLock || asking || !('wakeLock' in navigator) || document.hidden) return;
+  asking = true;
   try {
     wakeLock = await navigator.wakeLock.request('screen');
     wakeLock.addEventListener('release', () => {
@@ -243,6 +245,8 @@ async function requestWakeLock() {
   } catch {
     // A refusal is not fatal, so there is nothing to handle.
     wakeLock = null;
+  } finally {
+    asking = false;
   }
 }
 

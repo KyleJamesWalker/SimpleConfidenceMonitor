@@ -3,7 +3,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { elapsedMs, formatClock, formatDuration, parseDuration, readout } from './shared.js';
+import {
+  elapsedMs,
+  formatClock,
+  formatClockToMinute,
+  formatDuration,
+  parseDuration,
+  readout,
+} from './shared.js';
 
 const T0 = 1_700_000_000_000;
 const MIN = 60_000;
@@ -139,5 +146,24 @@ test('parses hours, minutes and seconds', () => {
 test('rejects text that is not a duration', () => {
   for (const bad of ['', '   ', 'abc', '1:2:3:4', '1:-2', '5m']) {
     assert.equal(parseDuration(bad), null, `expected ${bad} to be rejected`);
+  }
+});
+
+// The agenda prints start and end to the minute, and repaints on the minute.
+// Seconds left in the cell would sit there stale for up to a minute.
+test('a clock for a table carries no seconds in either format', () => {
+  const at = new Date(2026, 8, 2, 14, 14, 30);
+  assert.equal(formatClockToMinute(at, true), '14:14');
+  assert.equal(formatClockToMinute(at, false), '2:14 PM');
+  const morning = new Date(2026, 8, 2, 9, 5, 59);
+  assert.equal(formatClockToMinute(morning, true), '09:05');
+  assert.equal(formatClockToMinute(morning, false), '9:05 AM');
+});
+
+test('a clock for a table holds still as the seconds pass', () => {
+  const at = new Date(2026, 8, 2, 14, 14, 0);
+  const later = new Date(2026, 8, 2, 14, 14, 59);
+  for (const use24h of [true, false]) {
+    assert.equal(formatClockToMinute(at, use24h), formatClockToMinute(later, use24h));
   }
 });

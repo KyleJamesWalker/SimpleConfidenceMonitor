@@ -160,3 +160,16 @@ fn an_import_at_the_ceiling_still_lands() {
     let body = format!(r#"{{"cues":[{}]}}"#, cues.join(","));
     assert_eq!(parse_json(&body).unwrap().len(), MAX_CUES);
 }
+
+#[test]
+fn a_long_aux_label_is_capped() {
+    let room = Room::default();
+    let state = room.apply(
+        &Command::AuxSet {
+            label: Some(long(LINE_TEXT_LIMIT + 60)),
+            visible: Some(true),
+        },
+        T0,
+    );
+    assert_eq!(state.aux.label.chars().count(), LINE_TEXT_LIMIT);
+}

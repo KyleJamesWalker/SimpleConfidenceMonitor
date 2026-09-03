@@ -15,11 +15,13 @@ export function nextBackoffMs(current) {
   return Math.min(current * 2, MAX_BACKOFF_MS);
 }
 
-// Keydowns the focused control owns. A text field takes every key; a button or
-// a link takes the two that activate it, or tabbing to it makes it unusable.
-export function targetOwnsKey(tagName, key) {
+// Keydowns the focused control owns. A text field takes every key. A button or
+// a link takes the two that activate it, but only when the operator tabbed to
+// it: a click leaves a button focused, and Space is the transport's key.
+export function targetOwnsKey(tagName, key, keyboardFocused = false) {
   if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tagName)) return true;
-  return (tagName === 'BUTTON' || tagName === 'A') && (key === ' ' || key === 'Enter');
+  if (tagName !== 'BUTTON' && tagName !== 'A') return false;
+  return keyboardFocused && (key === ' ' || key === 'Enter');
 }
 
 async function askAuth() {
@@ -207,6 +209,13 @@ export function formatDuration(ms) {
   return hours > 0
     ? `${sign}${hours}:${pad(minutes)}:${pad(seconds)}`
     : `${sign}${minutes}:${pad(seconds)}`;
+}
+
+// The same clock without the seconds, for a table that shows minutes. Leaving
+// the seconds in would freeze them: the agenda repaints on the minute.
+export function formatClockToMinute(date, use24h) {
+  const text = formatClock(date, use24h);
+  return use24h ? text.slice(0, 5) : text.replace(/:\d{2}( [AP]M)$/, '$1');
 }
 
 export function formatClock(date, use24h) {

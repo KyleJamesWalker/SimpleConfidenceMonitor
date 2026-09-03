@@ -91,7 +91,7 @@
             <button id="cancelPresets" type="button">Cancel</button>
           </div>
         </div>
-        <textarea id="message" rows="2" placeholder="Wrap up"></textarea>
+        <textarea id="message" rows="2" maxlength="280" placeholder="Wrap up"></textarea>
         <div class="tones">
           <button data-tone="neutral" class="tone" aria-pressed="false">Neutral</button>
           <button data-tone="warn" class="tone" aria-pressed="false">Warn</button>
@@ -108,11 +108,11 @@
         <h2>Screen</h2>
         <label class="field">
           <span>Title</span>
-          <input id="title" type="text" placeholder="Keynote" />
+          <input id="title" type="text" maxlength="120" placeholder="Keynote" />
         </label>
         <label class="field">
           <span>Next up</span>
-          <input id="nextUp" type="text" placeholder="Panel: Q&amp;A" />
+          <input id="nextUp" type="text" maxlength="120" placeholder="Panel: Q&amp;A" />
         </label>
         <div class="toggles">
           <button id="blackout" data-toggle aria-pressed="false">Blackout</button>
@@ -138,7 +138,7 @@
         </div>
         <label class="field">
           <span>Label</span>
-          <input id="auxLabel" type="text" placeholder="Break" />
+          <input id="auxLabel" type="text" maxlength="120" placeholder="Break" />
         </label>
         <div class="chips" id="auxChips"></div>
         <div class="transport">
@@ -152,8 +152,8 @@
         <h2>Rundown <span id="totals" class="totals"></span></h2>
         <ol class="cues" id="cues"></ol>
         <form class="cueForm" id="cueForm">
-          <input id="cueTitle" type="text" placeholder="Cue title" autocomplete="off" />
-          <input id="cueSpeaker" type="text" placeholder="Speaker" autocomplete="off" />
+          <input id="cueTitle" type="text" maxlength="120" placeholder="Cue title" autocomplete="off" />
+          <input id="cueSpeaker" type="text" maxlength="120" placeholder="Speaker" autocomplete="off" />
           <input id="cueMinutes" type="text" inputmode="numeric" placeholder="5:00" />
           <button type="submit">Add cue</button>
         </form>

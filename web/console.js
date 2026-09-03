@@ -27,6 +27,10 @@ if (new URLSearchParams(location.search).has('token')) {
 const QUICK_MINUTES = [5, 10, 15, 20, 30];
 const TONES = ['neutral', 'warn', 'alert'];
 const MAX_PRESETS = 8;
+// The server cuts text past these, so the fields stop there instead.
+const LINE_LIMIT = 120;
+const NOTES_LIMIT = 500;
+const PRESET_LIMIT = 120;
 
 // An editor holds its own copy while open, so an arriving frame cannot
 // overwrite half typed text.
@@ -239,13 +243,13 @@ function openCueEditor(row, cue) {
     return { wrap, input };
   };
 
-  const title = field('Title', cue.title);
-  const speaker = field('Speaker', cue.speaker);
+  const title = field('Title', cue.title, { maxLength: LINE_LIMIT });
+  const speaker = field('Speaker', cue.speaker, { maxLength: LINE_LIMIT });
   const length = field('Length', formatDuration(cue.duration_ms), {
     inputMode: 'numeric',
     placeholder: '5:00',
   });
-  const notes = field('Note', cue.notes);
+  const notes = field('Note', cue.notes, { maxLength: NOTES_LIMIT });
 
   const buttons = document.createElement('div');
   buttons.className = 'transport';
@@ -436,6 +440,7 @@ function presetRow(preset) {
 
   const text = document.createElement('input');
   text.type = 'text';
+  text.maxLength = PRESET_LIMIT;
   text.className = 'presetText';
   text.value = preset.text;
   text.placeholder = 'Message';
@@ -580,8 +585,16 @@ el('message').addEventListener('keydown', (event) => {
   }
 });
 
+// A mouse click leaves the button focused, and Space is the transport's key.
+// The operator already clicked it, so hand focus back to the page. detail is
+// the click count, so a keyboard activation keeps its focus and stays tabbable.
+document.addEventListener('click', (event) => {
+  if (event.detail > 0) event.target.closest?.('button')?.blur();
+});
+
 document.addEventListener('keydown', (event) => {
-  const owned = targetOwnsKey(event.target.tagName, event.key);
+  const tabbedTo = event.target.matches?.(':focus-visible') ?? false;
+  const owned = targetOwnsKey(event.target.tagName, event.key, tabbedTo);
   if (owned || event.metaKey || event.ctrlKey || event.altKey) return;
   const running = state?.timer.run.state === 'running';
   const keys = {

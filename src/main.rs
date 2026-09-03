@@ -131,28 +131,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .await
     });
 
-    shutdown_signal().await;
-    tracing::info!("stopping");
-    // Every socket outlives any request, so end them rather than waiting on
-    // connections that would stay open for as long as the show runs.
-    hub.close_all();
-    // A beat for those close frames to reach the wire before the listener goes.
-    tokio::time::sleep(SOCKET_DRAIN).await;
-    let _ = stop.send(());
-    match tokio::time::timeout(SHUTDOWN_GRACE, server).await {
-        Ok(Ok(served)) => served?,
-        Ok(Err(err)) => tracing::warn!("the server task ended badly: {err}"),
-        Err(_) => tracing::warn!("a connection did not close within the grace period"),
-    }
-
-    if let Some(snapshots) = &snapshots {
-        let pending = snapshots.pending();
-        snapshots.flush(&hub);
-        if pending > 0 {
-            tracing::info!("wrote {pending} snapshot(s) on the way out");
+    let mut server = std::pin::pin!(server);
+    tokio::select! {
+        joined = &mut server => report(joined),
+        () = shutdown_signal() => {
+            tracing::info!("stopping");
+            // Before the rooms close, or the writer would take a closing room
+            // for a deleted one and skip it.
+            write_pending(&snapshots, &hub);
+            // Every socket outlives any request, so end them rather than
+            // waiting on connections that stay open for as long as the show.
+            hub.close_all();
+            // A beat for those close frames to reach the wire.
+            tokio::time::sleep(SOCKET_DRAIN).await;
+            let _ = stop.send(());
+            match tokio::time::timeout(SHUTDOWN_GRACE, server).await {
+                Ok(joined) => report(joined),
+                Err(_) => tracing::warn!("a connection did not close within the grace period"),
+            }
         }
     }
+    write_pending(&snapshots, &hub);
     Ok(())
+}
+
+/// Writes whatever is still inside the debounce window. A stop costs no state.
+fn write_pending(snapshots: &Option<Arc<Snapshots>>, hub: &Hub) {
+    let Some(snapshots) = snapshots else { return };
+    let pending = snapshots.pending();
+    snapshots.flush(hub);
+    if pending > 0 {
+        tracing::info!("wrote {pending} snapshot(s) on the way out");
+    }
+}
+
+/// The accept loop is meant to outlive everything else, so say so when it does
+/// not. There is nothing left to serve either way, and state still gets written.
+fn report(joined: Result<std::io::Result<()>, tokio::task::JoinError>) {
+    match joined {
+        Ok(Ok(())) => {}
+        Ok(Err(err)) => tracing::error!("stopped serving: {err}"),
+        Err(err) => tracing::error!("the server task ended badly: {err}"),
+    }
 }
 
 /// Ctrl-C, or the TERM a container runtime sends.

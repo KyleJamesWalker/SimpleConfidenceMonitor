@@ -674,7 +674,7 @@ impl RoomState {
             Command::AuxSet { label, visible } => {
                 let before = self.aux.clone();
                 if let Some(label) = label {
-                    self.aux.label = label.clone();
+                    self.aux.label = capped(label, LINE_TEXT_LIMIT);
                 }
                 if let Some(visible) = visible {
                     self.aux.visible = *visible;

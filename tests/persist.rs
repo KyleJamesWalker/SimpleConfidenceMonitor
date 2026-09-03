@@ -288,3 +288,79 @@ fn new_leaves_no_probe_file_behind() {
     Store::new(&dir).unwrap();
     assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 0);
 }
+
+#[test]
+fn flush_skips_a_room_the_hub_retired() {
+    let dir = temp_dir("flush-retired");
+    let snapshots = Snapshots::new(Store::new(&dir).unwrap());
+    let hub = Hub::new();
+    let room = hub.get_or_create(&name("keynote"));
+    room.apply(&Command::SetDuration { ms: 60_000 }, T0);
+    snapshots.mark(&name("keynote"));
+    // A delete retires the room. Writing it now would bring it back at the
+    // next restart.
+    room.close();
+    snapshots.flush(&hub);
+    assert!(
+        !dir.join("keynote.json").exists(),
+        "a retired room must not reach disk"
+    );
+}
+
+#[test]
+fn two_threads_saving_one_room_leave_a_readable_snapshot() {
+    let dir = temp_dir("concurrent-save");
+    let store = std::sync::Arc::new(Store::new(&dir).unwrap());
+    let mut states = Vec::new();
+    for (index, cues) in [8usize, 400].into_iter().enumerate() {
+        let mut state = RoomState {
+            rev: index as u64,
+            ..RoomState::default()
+        };
+        for _ in 0..cues {
+            state.apply(
+                &Command::AddCue {
+                    title: Some("a".repeat(100)),
+                    speaker: None,
+                    duration_ms: None,
+                    notes: None,
+                },
+                T0,
+            );
+        }
+        states.push(state);
+    }
+
+    // The temporary file is named after the room, so two writers racing on it
+    // used to be able to rename a splice of both documents into place.
+    let threads: Vec<_> = states
+        .into_iter()
+        .map(|state| {
+            let store = store.clone();
+            std::thread::spawn(move || {
+                for _ in 0..40 {
+                    store.save(&name("keynote"), &state, T0).unwrap();
+                }
+            })
+        })
+        .collect();
+    for thread in threads {
+        thread.join().unwrap();
+    }
+
+    let loaded = store.load_all();
+    assert_eq!(loaded.len(), 1, "the snapshot must still parse");
+    let cues = loaded[0].1.rundown.cues.len();
+    assert!(cues == 8 || cues == 400, "a spliced snapshot: {cues} cues");
+}
+
+#[test]
+fn deleting_a_snapshot_removes_the_file() {
+    let dir = temp_dir("store-delete");
+    let store = Store::new(&dir).unwrap();
+    store
+        .save(&name("keynote"), &RoomState::default(), T0)
+        .unwrap();
+    store.delete(&name("keynote")).unwrap();
+    assert!(!dir.join("keynote.json").exists());
+}
