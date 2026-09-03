@@ -177,6 +177,23 @@ pub struct Preset {
 pub const MAX_PRESETS: usize = 8;
 pub const PRESET_TEXT_LIMIT: usize = 120;
 
+/// Ceilings on everything else an operator or an import can put in the state.
+/// All of it rides in every frame to every client, so it is capped like a preset.
+pub const MAX_CUES: usize = 500;
+pub const MESSAGE_TEXT_LIMIT: usize = 280;
+pub const LINE_TEXT_LIMIT: usize = 120;
+pub const NOTES_TEXT_LIMIT: usize = 500;
+
+fn capped(text: &str, limit: usize) -> String {
+    text.chars().take(limit).collect()
+}
+
+fn capped_option(text: &Option<String>, limit: usize) -> String {
+    text.as_deref()
+        .map(|text| capped(text, limit))
+        .unwrap_or_default()
+}
+
 fn default_presets() -> Vec<Preset> {
     [
         ("5 minutes left", Tone::Neutral),
@@ -481,7 +498,7 @@ impl RoomState {
             } => {
                 let before = self.message.clone();
                 if let Some(text) = text {
-                    self.message.text = text.clone();
+                    self.message.text = capped(text, MESSAGE_TEXT_LIMIT);
                 }
                 if let Some(tone) = tone {
                     self.message.tone = *tone;
@@ -514,10 +531,10 @@ impl RoomState {
             } => {
                 let before = self.display.clone();
                 if let Some(title) = title {
-                    self.display.title = title.clone();
+                    self.display.title = capped(title, LINE_TEXT_LIMIT);
                 }
                 if let Some(next_up) = next_up {
-                    self.display.next_up = next_up.clone();
+                    self.display.next_up = capped(next_up, LINE_TEXT_LIMIT);
                 }
                 if let Some(value) = show_clock {
                     self.display.show_clock = *value;
@@ -551,13 +568,16 @@ impl RoomState {
                 duration_ms,
                 notes,
             } => {
+                if self.rundown.cues.len() >= MAX_CUES {
+                    return false;
+                }
                 let id = self.rundown.take_id();
                 self.rundown.cues.push(Cue {
                     id,
-                    title: title.clone().unwrap_or_default(),
-                    speaker: speaker.clone().unwrap_or_default(),
+                    title: capped_option(title, LINE_TEXT_LIMIT),
+                    speaker: capped_option(speaker, LINE_TEXT_LIMIT),
                     duration_ms: duration_ms.unwrap_or(DEFAULT_CUE_MS),
-                    notes: notes.clone().unwrap_or_default(),
+                    notes: capped_option(notes, NOTES_TEXT_LIMIT),
                 });
                 self.resync_screen(self.rundown.active);
                 true
@@ -575,16 +595,16 @@ impl RoomState {
                 let before = self.rundown.cues[index].clone();
                 let cue = &mut self.rundown.cues[index];
                 if let Some(title) = title {
-                    cue.title = title.clone();
+                    cue.title = capped(title, LINE_TEXT_LIMIT);
                 }
                 if let Some(speaker) = speaker {
-                    cue.speaker = speaker.clone();
+                    cue.speaker = capped(speaker, LINE_TEXT_LIMIT);
                 }
                 if let Some(duration_ms) = duration_ms {
                     cue.duration_ms = *duration_ms;
                 }
                 if let Some(notes) = notes {
-                    cue.notes = notes.clone();
+                    cue.notes = capped(notes, NOTES_TEXT_LIMIT);
                 }
                 let changed = before != self.rundown.cues[index];
                 if changed {
@@ -654,7 +674,7 @@ impl RoomState {
             Command::AuxSet { label, visible } => {
                 let before = self.aux.clone();
                 if let Some(label) = label {
-                    self.aux.label = label.clone();
+                    self.aux.label = capped(label, LINE_TEXT_LIMIT);
                 }
                 if let Some(visible) = visible {
                     self.aux.visible = *visible;
@@ -664,12 +684,13 @@ impl RoomState {
             Command::SetCues { cues } => {
                 self.rundown.cues = cues
                     .iter()
+                    .take(MAX_CUES)
                     .map(|draft| Cue {
                         id: self.rundown.take_id(),
-                        title: draft.title.clone(),
-                        speaker: draft.speaker.clone(),
+                        title: capped(&draft.title, LINE_TEXT_LIMIT),
+                        speaker: capped(&draft.speaker, LINE_TEXT_LIMIT),
                         duration_ms: draft.duration_ms,
-                        notes: draft.notes.clone(),
+                        notes: capped(&draft.notes, NOTES_TEXT_LIMIT),
                     })
                     .collect();
                 let had_active = self.rundown.active;
@@ -704,6 +725,19 @@ impl RoomState {
                 changed
             }
         }
+    }
+
+    /// Applies each command in turn, bumping rev once per change. Returns
+    /// whether any of them changed the state.
+    fn apply_each(&mut self, cmds: &[Command], now_ms: u64) -> bool {
+        let mut changed = false;
+        for cmd in cmds {
+            if self.apply(cmd, now_ms) {
+                self.rev += 1;
+                changed = true;
+            }
+        }
+        changed
     }
 
     /// Points the timer and the screen at one cue, and starts it from zero.
@@ -866,20 +900,51 @@ impl Room {
         }
         let (next, changed) = {
             let mut state = self.state.lock().expect("room lock");
-            let mut changed = false;
-            for cmd in cmds {
-                if state.apply(cmd, now_ms) {
-                    state.rev += 1;
-                    changed = true;
-                }
-            }
+            let changed = state.apply_each(cmds, now_ms);
             (state.clone(), changed)
         };
+        self.settle(changed);
+        next
+    }
+
+    /// Applies commands only while the state still satisfies `want`, checked
+    /// under the same lock. A decision taken from an earlier read cannot
+    /// override an operator who moved in between. Returns whether it applied.
+    pub fn apply_if(
+        &self,
+        want: impl FnOnce(&RoomState) -> bool,
+        cmds: &[Command],
+        now_ms: u64,
+    ) -> bool {
+        if self.is_closed() {
+            return false;
+        }
+        let changed = {
+            let mut state = self.state.lock().expect("room lock");
+            if !want(&state) {
+                return false;
+            }
+            state.apply_each(cmds, now_ms)
+        };
+        self.settle(changed);
+        changed
+    }
+
+    /// Reads the state under the lock. A caller after a few fields uses this
+    /// rather than cloning the room, cues included.
+    pub fn peek<T>(&self, read: impl FnOnce(&RoomState) -> T) -> T {
+        read(&self.state.lock().expect("room lock"))
+    }
+
+    /// A command that changes nothing wakes no screen and writes no snapshot.
+    fn settle(&self, changed: bool) {
+        if !changed {
+            return;
+        }
         self.publish();
-        if let Some(snapshots) = self.snapshots.as_ref().filter(|_| changed) {
+        if let Some(snapshots) = self.snapshots.as_ref() {
             snapshots.mark(&self.name);
         }
-        next
     }
 
     /// Sends the current state to every subscriber. A room with no client is a no-op.

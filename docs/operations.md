@@ -182,6 +182,7 @@ because `-30000` there means half a minute off and nothing else. So does
 
 | Method | Path | Returns |
 |---|---|---|
+| `GET` | `/api/auth` | `{"ok":true}`, or 401 when the token is wrong or absent |
 | `GET` | `/api/rooms` | The names of the live rooms |
 | `GET` | `/api/rooms/<room>` | Room state, the same shape the socket sends |
 | `DELETE` | `/api/rooms/<room>` | Clears the room, drops it, and deletes its snapshot |
@@ -191,6 +192,15 @@ because `-30000` there means half a minute off and nothing else. So does
 | `POST` | `/api/rooms/<room>/rundown` | Replaces the running order from CSV or JSON |
 | `GET` | `/api/qr?text=<url>` | An SVG QR code |
 | `GET` | `/healthz` | `ok` |
+
+### Ceilings
+
+Everything in a room rides in every state frame to every client, so each part of
+it has a limit. A room holds 8 presets of 120 characters and 500 cues. A cue
+title or a speaker takes 120 characters and a cue note 500. A message to the
+speaker takes 280, and a screen title or next-up line 120. Text past a limit is
+cut; an import of more than 500 cues is refused with a message rather than
+truncated in silence.
 
 ## A running order from a spreadsheet
 
@@ -243,6 +253,11 @@ can reach.
 
 The server refuses to start when it cannot write to the directory, so a
 misconfigured mount fails loudly instead of dropping every snapshot.
+
+Ctrl-C, or the TERM that `docker stop` sends, stops the server in order: it
+closes every socket, gives connections five seconds to finish, then writes
+whatever was still inside the one second debounce window. A stop costs no state.
+A `SIGKILL`, or pulling the power, loses that last second.
 
 ### The state directory in Docker
 
@@ -299,9 +314,13 @@ forward, or give the display machine its own window in the foreground.
 viewer shows a tap-to-enable button whenever the chime is on and sound is still
 locked.
 
-**The display sleeps mid-session.** The viewer holds a screen wake lock where the
-browser supports it, and offers a fullscreen button. Turn off system sleep on the
-display machine as well.
+**The display sleeps mid-session.** The viewer asks for a screen wake lock, and
+re-asks whenever the tab comes back to the front, because the browser drops the
+lock every time the document hides. The API needs a secure context, so it is
+there on `https://` and on `http://localhost`, and **absent on the plain
+`http://<lan-ip>:8080` this server is usually reached at**. Over the LAN, turn
+off system sleep on the display machine: that, plus the fullscreen button, is
+what keeps the screen up.
 
 **The server exits at startup with a state directory error.** The user it runs
 as cannot write there. See [State across a restart](#state-across-a-restart).

@@ -52,6 +52,7 @@ pub fn router(state: AppState) -> Router {
         .route("/healthz", get(healthz))
         .route("/assets/{*path}", get(asset))
         .route("/api/qr", get(qr))
+        .route("/api/auth", get(auth_check))
         .route("/api/rooms", get(room_list))
         .route("/api/rooms/{room}", get(room_state).delete(delete_room))
         .route(
@@ -108,6 +109,23 @@ async fn console(
     }
 }
 
+/// Whether the caller holds the operator token. A console whose socket was
+/// refused asks here, so it can tell an expired token from a dropped network.
+async fn auth_check(
+    State(state): State<AppState>,
+    Query(params): Query<HashMap<String, String>>,
+    headers: HeaderMap,
+) -> Response {
+    if state
+        .auth
+        .check(&headers, params.get("token").map(String::as_str))
+        == Outcome::Denied
+    {
+        return denied();
+    }
+    json(serde_json::json!({ "ok": true }).to_string())
+}
+
 async fn room_list(State(state): State<AppState>) -> Response {
     let names: Vec<String> = state
         .hub
@@ -162,7 +180,7 @@ async fn command(
     headers: HeaderMap,
     body: String,
 ) -> Response {
-    let name = match room_of(&state, &room) {
+    let name = match named(&room) {
         Ok(name) => name,
         Err(response) => return *response,
     };
@@ -204,7 +222,7 @@ async fn command_from_query(
     Query(params): Query<HashMap<String, String>>,
     headers: HeaderMap,
 ) -> Response {
-    let name = match room_of(&state, &room) {
+    let name = match named(&room) {
         Ok(name) => name,
         Err(response) => return *response,
     };
@@ -286,7 +304,7 @@ async fn import_rundown(
     headers: HeaderMap,
     body: String,
 ) -> Response {
-    let name = match room_of(&state, &room) {
+    let name = match named(&room) {
         Ok(name) => name,
         Err(response) => return *response,
     };
@@ -326,7 +344,7 @@ async fn socket(
     headers: HeaderMap,
     upgrade: WebSocketUpgrade,
 ) -> Response {
-    let name = match room_of(&state, &room) {
+    let name = match named(&room) {
         Ok(name) => name,
         Err(response) => return *response,
     };
@@ -376,15 +394,9 @@ async fn asset(Path(path): Path<String>) -> Response {
     }
 }
 
-/// Validates the name and creates the room, or returns the response to send back.
-fn room_of(state: &AppState, room: &str) -> Result<RoomName, Box<Response>> {
-    let name = named(room)?;
-    state.hub.get_or_create(&name);
-    Ok(name)
-}
-
-/// Validates the name without bringing a room into being. A read uses this, so
-/// a typo or a crawler cannot litter the room list.
+/// Validates the name without bringing a room into being. Every handler uses
+/// this and creates the room only past the auth check, so a typo, a crawler or
+/// a refused caller cannot litter the room list.
 fn named(room: &str) -> Result<RoomName, Box<Response>> {
     RoomName::parse(room)
         .map_err(|err| Box::new((StatusCode::BAD_REQUEST, err.to_string()).into_response()))

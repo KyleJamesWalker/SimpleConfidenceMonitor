@@ -87,6 +87,11 @@ a {
   color: #ff9a9a;
 }
 
+.status.unauthorized {
+  background: #3a2a0d;
+  color: #ffcf7a;
+}
+
 /* Column flow rather than a grid, so a short panel does not hold open a row
    the height of the tallest panel beside it. */
 .grid {

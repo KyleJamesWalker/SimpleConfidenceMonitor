@@ -83,9 +83,11 @@ behavior keeps the tests.
   runs it and prints the numbers
 
 The JavaScript suites cover the parts with real logic: the readout, the offset
-estimator, duration and clock parsing, the agenda projection, the schedule
-totals and the per-screen overrides. A browser verifies the rendering, which no
-assertion covers.
+estimator, duration and clock parsing, the agenda projection and the signature it
+repaints on, the schedule totals, the per-screen overrides, which keydowns a
+focused control owns, and the socket's reconnect, backoff and refused handshake.
+`RoomSocket` takes its socket, its auth probe and its timer as options so a test
+can drive them. A browser verifies the rendering, which no assertion covers.
 
 ## Verifying the frontend
 

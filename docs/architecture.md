@@ -65,10 +65,11 @@ timer reuses this type, so the two cannot drift apart in behavior.
 
 ### `src/hub.rs`
 
-The room registry. A command or a socket creates a room, a read does not, and a
-delete retires it: the room closes, its sockets end, and it takes no further
-commands. The hub also restores rooms at startup and hands each new room the
-snapshot writer.
+The room registry. A command or a socket creates a room, a read does not, a
+refused caller does not either, and a delete retires it: the room closes, its
+sockets end, and it takes no further commands. The hub also restores rooms at
+startup and hands each new room the snapshot writer. A stop closes every room,
+so no socket holds the shutdown open.
 
 ### `src/routes.rs`
 
@@ -89,13 +90,19 @@ query parameter, then a cookie.
 ### `src/persist.rs`
 
 Snapshots. One JSON file per room, written through a temporary file and a
-rename, debounced one second after a change.
+rename, debounced one second after a change. The write runs on a blocking thread,
+so a slow or network-mounted state directory cannot stall the runtime serving
+every socket. A stop flushes whatever is still inside the debounce window.
 
 ### `src/autopilot.rs`
 
 The only part of the server that watches a clock. A 200 millisecond scan starts
 an armed room at its appointed time, and advances a rundown when a running cue
 reaches zero. It reads nothing else, and the readout does not depend on it.
+
+The scan decides from a read and then writes, so it hands the same condition to
+`Room::apply_if`, which re-checks it under the write lock. An operator who
+disarms or reloads inside that window wins.
 
 ### `src/discovery.rs`
 
@@ -147,6 +154,10 @@ protocol would buy nothing and would cost reconnect correctness.
 **One server token, not a per-room secret.** This binary runs on a laptop for one
 event, where one token is one fewer thing to lose. The `auth.rs` boundary keeps a
 per-room upgrade cheap.
+
+**Everything in a room is capped.** Presets, cues, cue text, the message and the
+screen lines all have ceilings, because the whole state rides in every frame to
+every client. [operations.md](operations.md) lists the numbers.
 
 **No server tick for the readout.** A task pushing readouts every 100
 milliseconds scales with room count rather than events. It also turns network

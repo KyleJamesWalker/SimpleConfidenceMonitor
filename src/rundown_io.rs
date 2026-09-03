@@ -1,4 +1,4 @@
-use crate::room::{Cue, CueDraft, DEFAULT_CUE_MS};
+use crate::room::{Cue, CueDraft, DEFAULT_CUE_MS, MAX_CUES};
 
 /// Accepts minutes, mm:ss, or hh:mm:ss.
 pub fn parse_duration(raw: &str) -> Option<u64> {
@@ -63,7 +63,7 @@ pub fn to_json(cues: &[Cue]) -> String {
 /// `duration_ms` for a caller that already counts milliseconds.
 pub fn parse_json(body: &str) -> Result<Vec<CueDraft>, String> {
     let document: RundownDocument = serde_json::from_str(body).map_err(|err| err.to_string())?;
-    Ok(document.cues)
+    within_ceiling(document.cues)
 }
 
 /// Reads a running order. A header row names the columns, and its absence
@@ -116,6 +116,18 @@ pub fn parse_csv(body: &str) -> Result<Vec<CueDraft>, String> {
             return Err(format!("line {line}: a cue needs a title"));
         }
         cues.push(cue);
+    }
+    within_ceiling(cues)
+}
+
+/// A rundown rides in every state frame to every client, so an import that
+/// would not fit a show is refused rather than truncated in silence.
+fn within_ceiling(cues: Vec<CueDraft>) -> Result<Vec<CueDraft>, String> {
+    if cues.len() > MAX_CUES {
+        return Err(format!(
+            "a rundown holds at most {MAX_CUES} cues, and this one has {}",
+            cues.len()
+        ));
     }
     Ok(cues)
 }

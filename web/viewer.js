@@ -228,11 +228,30 @@ el.soundHint.addEventListener('click', () => {
   el.soundHint.hidden = true;
 });
 
-document.addEventListener('click', requestWakeLock, { once: true });
+// The screen wake lock. The API is secure-context only, so over plain http on
+// a LAN address there is nothing to call: see docs/operations.md. The spec also
+// drops the lock whenever the document hides, so ask again on the way back.
+let wakeLock = null;
+let asking = false;
+
 async function requestWakeLock() {
+  if (wakeLock || asking || !('wakeLock' in navigator) || document.hidden) return;
+  asking = true;
   try {
-    await navigator.wakeLock?.request('screen');
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => {
+      wakeLock = null;
+    });
   } catch {
     // A refusal is not fatal, so there is nothing to handle.
+    wakeLock = null;
+  } finally {
+    asking = false;
   }
 }
+
+document.addEventListener('click', requestWakeLock);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) requestWakeLock();
+});
+requestWakeLock();

@@ -8,6 +8,7 @@ import {
   readout,
   roomFromPath,
   rundownTotals,
+  targetOwnsKey,
 } from '/assets/shared.js';
 
 const el = (id) => document.getElementById(id);
@@ -17,9 +18,19 @@ el('roomName').textContent = room;
 el('viewerLink').href = `/${room}`;
 el('agendaLink').href = `/${room}/agenda`;
 
+// The server answered with a cookie, so take the token out of the address bar
+// and out of browser history.
+if (new URLSearchParams(location.search).has('token')) {
+  history.replaceState(null, '', location.pathname);
+}
+
 const QUICK_MINUTES = [5, 10, 15, 20, 30];
 const TONES = ['neutral', 'warn', 'alert'];
 const MAX_PRESETS = 8;
+// The server cuts text past these, so the fields stop there instead.
+const LINE_LIMIT = 120;
+const NOTES_LIMIT = 500;
+const PRESET_LIMIT = 120;
 
 // An editor holds its own copy while open, so an arriving frame cannot
 // overwrite half typed text.
@@ -67,6 +78,12 @@ const socket = new RoomSocket({
     node.className = `status ${status}`;
   },
   onError: toast,
+  onRefused: () => {
+    toast('The operator token expired. Opening the token form.');
+    setTimeout(() => {
+      location.href = `/${room}/edit`;
+    }, 1500);
+  },
 });
 
 const send = (message) => socket.send(message);
@@ -109,16 +126,23 @@ function applyState(frame) {
 
   tone = message.tone;
   for (const button of document.querySelectorAll('.tone')) {
-    button.classList.toggle('on', button.dataset.tone === tone);
+    pressed(button, button.dataset.tone === tone);
   }
   for (const [id, read] of Object.entries(TOGGLE_STATE)) {
-    el(id).classList.toggle('on', Boolean(read(frame)));
+    pressed(el(id), Boolean(read(frame)));
   }
-  el('showMessage').classList.toggle('on', message.visible && Boolean(message.text));
+  pressed(el('showMessage'), message.visible && Boolean(message.text));
   drawArmed(frame);
   drawPresets(frame);
   drawRundown(frame);
   render();
+}
+
+// A CSS class alone leaves a screen reader unable to tell whether blackout is
+// live, so the state rides on aria-pressed too.
+function pressed(node, on) {
+  node.classList.toggle('on', on);
+  node.setAttribute('aria-pressed', String(Boolean(on)));
 }
 
 function drawArmed(frame) {
@@ -177,12 +201,17 @@ function drawRundown(frame) {
 
     const actions = document.createElement('span');
     actions.className = 'actions';
+    const named = cue.title || `cue ${index + 1}`;
     actions.append(
-      action('Load', () => send({ cmd: 'load_cue', id: cue.id })),
-      action('Edit', () => openCueEditor(item, cue)),
-      action('Up', () => send({ cmd: 'move_cue', id: cue.id, to: Math.max(0, index - 1) })),
-      action('Down', () => send({ cmd: 'move_cue', id: cue.id, to: index + 1 })),
-      action('X', () => send({ cmd: 'remove_cue', id: cue.id })),
+      action('Load', () => send({ cmd: 'load_cue', id: cue.id }), `Load ${named}`),
+      action('Edit', () => openCueEditor(item, cue), `Edit ${named}`),
+      action(
+        'Up',
+        () => send({ cmd: 'move_cue', id: cue.id, to: Math.max(0, index - 1) }),
+        `Move ${named} up`,
+      ),
+      action('Down', () => send({ cmd: 'move_cue', id: cue.id, to: index + 1 }), `Move ${named} down`),
+      action('X', () => removeCue(cue, named), `Remove ${named}`),
     );
 
     item.append(position, label, length, actions);
@@ -214,13 +243,13 @@ function openCueEditor(row, cue) {
     return { wrap, input };
   };
 
-  const title = field('Title', cue.title);
-  const speaker = field('Speaker', cue.speaker);
+  const title = field('Title', cue.title, { maxLength: LINE_LIMIT });
+  const speaker = field('Speaker', cue.speaker, { maxLength: LINE_LIMIT });
   const length = field('Length', formatDuration(cue.duration_ms), {
     inputMode: 'numeric',
     placeholder: '5:00',
   });
-  const notes = field('Note', cue.notes);
+  const notes = field('Note', cue.notes, { maxLength: NOTES_LIMIT });
 
   const buttons = document.createElement('div');
   buttons.className = 'transport';
@@ -263,10 +292,21 @@ function openCueEditor(row, cue) {
   title.input.focus();
 }
 
-function action(label, onClick) {
+// Delete sits in a dense row beside Load and Down, mid-show, and there is no
+// undo. Clearing a room and deleting one both ask first.
+function removeCue(cue, named) {
+  const onAir = state?.rundown.active === cue.id;
+  const consequence = onAir ? ' It is on air, so the stage title and next up go blank.' : '';
+  if (!window.confirm(`Remove ${named} from the rundown?${consequence}`)) return;
+  send({ cmd: 'remove_cue', id: cue.id });
+}
+
+function action(label, onClick, description = label) {
   const button = document.createElement('button');
   button.type = 'button';
   button.textContent = label;
+  button.title = description;
+  button.setAttribute('aria-label', description);
   button.addEventListener('click', onClick);
   return button;
 }
@@ -400,6 +440,7 @@ function presetRow(preset) {
 
   const text = document.createElement('input');
   text.type = 'text';
+  text.maxLength = PRESET_LIMIT;
   text.className = 'presetText';
   text.value = preset.text;
   text.placeholder = 'Message';
@@ -419,6 +460,7 @@ function presetRow(preset) {
   remove.className = 'removePreset';
   remove.textContent = '\u00d7';
   remove.title = 'Remove';
+  remove.setAttribute('aria-label', `Remove preset: ${preset.text || 'new message'}`);
   remove.addEventListener('click', () => row.remove());
 
   row.append(text, tone, remove);
@@ -430,14 +472,14 @@ function openPresetEditor() {
   el('presetRows').replaceChildren(...(state?.presets || []).map(presetRow));
   el('presetEditor').hidden = false;
   el('presets').hidden = true;
-  el('editPresets').classList.add('on');
+  pressed(el('editPresets'), true);
 }
 
 function closePresetEditor() {
   editingPresets = false;
   el('presetEditor').hidden = true;
   el('presets').hidden = false;
-  el('editPresets').classList.remove('on');
+  pressed(el('editPresets'), false);
   el('presets').dataset.signature = '';
   if (state) drawPresets(state);
 }
@@ -543,9 +585,17 @@ el('message').addEventListener('keydown', (event) => {
   }
 });
 
+// A mouse click leaves the button focused, and Space is the transport's key.
+// The operator already clicked it, so hand focus back to the page. detail is
+// the click count, so a keyboard activation keeps its focus and stays tabbable.
+document.addEventListener('click', (event) => {
+  if (event.detail > 0) event.target.closest?.('button')?.blur();
+});
+
 document.addEventListener('keydown', (event) => {
-  const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName);
-  if (typing || event.metaKey || event.ctrlKey || event.altKey) return;
+  const tabbedTo = event.target.matches?.(':focus-visible') ?? false;
+  const owned = targetOwnsKey(event.target.tagName, event.key, tabbedTo);
+  if (owned || event.metaKey || event.ctrlKey || event.altKey) return;
   const running = state?.timer.run.state === 'running';
   const keys = {
     ' ': () => send({ cmd: running ? 'pause' : 'start' }),
