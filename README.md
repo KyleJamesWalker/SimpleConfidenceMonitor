@@ -28,6 +28,8 @@ What it carries:
 - Countdown, count-up and time-of-day timers, with amber and red warnings and
   overtime
 - A rundown with auto-advance, an agenda page, and CSV or JSON import and export
+- Notes for the speaker, timed to points inside a cue, under the timer where
+  they can be read
 - Messages to the speaker, with one-press presets and three tones
 - A second timer for a break or a hard stop
 - Blackout, flash, a chime at zero, and mirroring for teleprompter glass
