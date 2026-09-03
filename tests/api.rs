@@ -104,6 +104,33 @@ async fn a_guarded_server_refuses_a_command_without_a_token() {
 }
 
 #[tokio::test]
+async fn refused_commands_leave_the_room_list_empty() {
+    let addr = guarded_server().await;
+    for room in ["keynote", "panel", "gala"] {
+        let response = client()
+            .post(format!("http://{addr}/api/rooms/{room}/cmd"))
+            .json(&serde_json::json!({"cmd": "start"}))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 401);
+    }
+    let body: serde_json::Value = client()
+        .get(format!("http://{addr}/api/rooms"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(
+        body["rooms"],
+        serde_json::json!([]),
+        "a refused write must not pollute the picker's live room list"
+    );
+}
+
+#[tokio::test]
 async fn a_guarded_server_accepts_a_command_with_a_bearer_token() {
     let addr = guarded_server().await;
     let response = client()

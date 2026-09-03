@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use axum::extract::ws::{Message, WebSocket};
+use axum::extract::ws::{CloseFrame, Message, WebSocket};
 use futures_util::{SinkExt, StreamExt};
 
 use crate::clock::now_ms;
@@ -79,6 +79,9 @@ pub async fn serve_socket(socket: WebSocket, room: Arc<Room>, role: Role) {
                     break;
                 }
                 if room.is_closed() {
+                    // A close frame, so the client sees the room end rather
+                    // than the socket vanishing under it.
+                    let _ = sink.send(Message::Close(Some(going_away()))).await;
                     break;
                 }
             }
@@ -88,6 +91,15 @@ pub async fn serve_socket(socket: WebSocket, room: Arc<Room>, role: Role) {
                 }
             }
         }
+    }
+}
+
+/// 1001: the endpoint is going away, which covers both a deleted room and a
+/// server on its way out.
+fn going_away() -> CloseFrame {
+    CloseFrame {
+        code: 1001,
+        reason: "this room has ended".into(),
     }
 }
 

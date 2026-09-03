@@ -1,5 +1,7 @@
+use std::sync::Arc;
+
 use axum::body::Body;
-use axum::http::{Request, StatusCode};
+use axum::http::{Request, StatusCode, header};
 use simple_confidence_monitor::hub::Hub;
 use simple_confidence_monitor::routes::{AppState, router};
 use tower::ServiceExt;
@@ -75,4 +77,119 @@ async fn the_agenda_page_is_served() {
 async fn the_agenda_page_rejects_an_invalid_room_name() {
     let (status, _) = get("/a%20b/agenda").await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+/// A write against a guarded server, with the token the caller supplies.
+async fn write_to(hub: &Arc<Hub>, request: Request<Body>) -> StatusCode {
+    let app = router(AppState::guarded(hub.clone(), "s3cret"));
+    app.oneshot(request).await.unwrap().status()
+}
+
+fn post(uri: &str, content_type: &str, body: &'static str) -> Request<Body> {
+    Request::builder()
+        .method("POST")
+        .uri(uri)
+        .header(header::CONTENT_TYPE, content_type)
+        .body(Body::from(body))
+        .unwrap()
+}
+
+#[tokio::test]
+async fn a_refused_command_does_not_create_the_room() {
+    let hub = Hub::new();
+    let status = write_to(
+        &hub,
+        post(
+            "/api/rooms/keynote/cmd",
+            "application/json",
+            r#"{"cmd":"start"}"#,
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    assert_eq!(
+        hub.room_count(),
+        0,
+        "a rejected caller must leave no room behind"
+    );
+}
+
+#[tokio::test]
+async fn a_refused_query_command_does_not_create_the_room() {
+    let hub = Hub::new();
+    let status = write_to(
+        &hub,
+        Request::builder()
+            .uri("/api/rooms/keynote/cmd?cmd=start")
+            .body(Body::empty())
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    assert_eq!(hub.room_count(), 0);
+}
+
+#[tokio::test]
+async fn a_refused_import_does_not_create_the_room() {
+    let hub = Hub::new();
+    let status = write_to(
+        &hub,
+        post(
+            "/api/rooms/keynote/rundown",
+            "text/csv",
+            "Keynote,Alice,5:00,",
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    assert_eq!(hub.room_count(), 0);
+}
+
+#[tokio::test]
+async fn an_authorized_command_still_creates_the_room() {
+    let hub = Hub::new();
+    let app = router(AppState::guarded(hub.clone(), "s3cret"));
+    let status = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/rooms/keynote/cmd")
+                .header(header::CONTENT_TYPE, "application/json")
+                .header(header::AUTHORIZATION, "Bearer s3cret")
+                .body(Body::from(r#"{"cmd":"start"}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap()
+        .status();
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(hub.room_count(), 1);
+}
+
+#[tokio::test]
+async fn the_auth_endpoint_separates_a_bad_token_from_a_dropped_network() {
+    let hub = Hub::new();
+    let app = router(AppState::guarded(hub.clone(), "s3cret"));
+    let refused = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/auth")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(refused.status(), StatusCode::UNAUTHORIZED);
+    let allowed = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/auth?token=s3cret")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(allowed.status(), StatusCode::OK);
+    assert_eq!(hub.room_count(), 0);
 }

@@ -15,6 +15,12 @@ use tracing_subscriber::EnvFilter;
 /// How long a room settles before its snapshot is written.
 const SNAPSHOT_DEBOUNCE: Duration = Duration::from_secs(1);
 
+/// How long a connection has to finish once the server stops listening.
+const SHUTDOWN_GRACE: Duration = Duration::from_secs(5);
+
+/// How long the closing sockets have to flush their close frames.
+const SOCKET_DRAIN: Duration = Duration::from_millis(100);
+
 /// A speaker timer and confidence monitor served from one binary.
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -93,7 +99,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
     }
 
-    let app = router(AppState::new(hub, auth));
+    let app = router(AppState::new(hub.clone(), auth));
     let addr = SocketAddr::new(args.bind, args.port);
     let listener = tokio::net::TcpListener::bind(addr).await?;
 
@@ -116,8 +122,66 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
     };
 
-    axum::serve(listener, app).await?;
+    let (stop, stopped) = tokio::sync::oneshot::channel::<()>();
+    let server = tokio::spawn(async move {
+        axum::serve(listener, app)
+            .with_graceful_shutdown(async move {
+                let _ = stopped.await;
+            })
+            .await
+    });
+
+    shutdown_signal().await;
+    tracing::info!("stopping");
+    // Every socket outlives any request, so end them rather than waiting on
+    // connections that would stay open for as long as the show runs.
+    hub.close_all();
+    // A beat for those close frames to reach the wire before the listener goes.
+    tokio::time::sleep(SOCKET_DRAIN).await;
+    let _ = stop.send(());
+    match tokio::time::timeout(SHUTDOWN_GRACE, server).await {
+        Ok(Ok(served)) => served?,
+        Ok(Err(err)) => tracing::warn!("the server task ended badly: {err}"),
+        Err(_) => tracing::warn!("a connection did not close within the grace period"),
+    }
+
+    if let Some(snapshots) = &snapshots {
+        let pending = snapshots.pending();
+        snapshots.flush(&hub);
+        if pending > 0 {
+            tracing::info!("wrote {pending} snapshot(s) on the way out");
+        }
+    }
     Ok(())
+}
+
+/// Ctrl-C, or the TERM a container runtime sends.
+async fn shutdown_signal() {
+    let interrupt = async {
+        if let Err(err) = tokio::signal::ctrl_c().await {
+            tracing::warn!("could not listen for Ctrl-C: {err}");
+            std::future::pending::<()>().await;
+        }
+    };
+    #[cfg(unix)]
+    let terminate = async {
+        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            Ok(mut signal) => {
+                signal.recv().await;
+            }
+            Err(err) => {
+                tracing::warn!("could not listen for SIGTERM: {err}");
+                std::future::pending::<()>().await;
+            }
+        }
+    };
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = interrupt => {}
+        _ = terminate => {}
+    }
 }
 
 /// Best-effort LAN address to print, so an operator can read a URL off the screen.

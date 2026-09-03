@@ -53,6 +53,14 @@ impl Hub {
         removed.is_some()
     }
 
+    /// Retires every room. A stopping server calls this, so each socket ends
+    /// rather than holding the shutdown open for as long as the show runs.
+    pub fn close_all(&self) {
+        for room in self.rooms.read().expect("hub lock").values() {
+            room.close();
+        }
+    }
+
     /// Puts loaded rooms back in place at startup.
     pub fn restore(&self, rooms: Vec<(RoomName, RoomState)>) {
         let mut live = self.rooms.write().expect("hub lock");

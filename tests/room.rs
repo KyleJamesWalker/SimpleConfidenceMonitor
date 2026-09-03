@@ -29,6 +29,68 @@ fn a_command_that_changes_nothing_leaves_rev_alone() {
 }
 
 #[test]
+fn a_command_that_changes_nothing_wakes_no_client() {
+    let room = Room::default();
+    room.apply(&Command::Start, T0);
+    let mut frames = room.subscribe();
+    room.apply(&Command::Start, T0 + MIN);
+    assert!(
+        frames.try_recv().is_err(),
+        "a command that changes nothing must wake no screen"
+    );
+}
+
+#[test]
+fn a_command_that_changes_state_wakes_every_client() {
+    let room = Room::default();
+    let mut frames = room.subscribe();
+    room.apply(&Command::Start, T0);
+    assert!(frames.try_recv().is_ok());
+}
+
+#[test]
+fn re_asserting_blackout_wakes_no_client() {
+    let room = Room::default();
+    room.apply(&Command::Blackout { on: true }, T0);
+    let mut frames = room.subscribe();
+    room.apply(&Command::Blackout { on: true }, T0 + MIN);
+    assert!(frames.try_recv().is_err());
+}
+
+#[test]
+fn apply_if_runs_while_the_state_still_matches() {
+    let room = Room::default();
+    let applied = room.apply_if(|state| !state.timer.is_running(), &[Command::Start], T0);
+    assert!(applied);
+    assert!(room.snapshot().timer.is_running());
+}
+
+#[test]
+fn apply_if_leaves_a_room_that_moved_on_alone() {
+    let room = Room::default();
+    room.apply(&Command::Start, T0);
+    let mut frames = room.subscribe();
+    let applied = room.apply_if(
+        |state| !state.timer.is_running(),
+        &[Command::Pause],
+        T0 + MIN,
+    );
+    assert!(
+        !applied,
+        "the predicate no longer holds, so nothing applies"
+    );
+    assert_eq!(room.snapshot().timer.run, Run::Running { since_ms: T0 });
+    assert!(frames.try_recv().is_err());
+}
+
+#[test]
+fn peek_reads_the_state_without_a_clone() {
+    let room = Room::default();
+    room.apply(&Command::SetDuration { ms: 7 * MIN }, T0);
+    assert_eq!(room.peek(|state| state.timer.duration_ms), 7 * MIN);
+}
+
+#[test]
 fn the_room_records_elapsed_time_across_a_pause() {
     let room = Room::default();
     room.apply(&Command::Start, T0);

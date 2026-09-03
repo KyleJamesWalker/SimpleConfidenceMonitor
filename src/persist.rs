@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
@@ -113,7 +113,7 @@ fn pause_at_save(timer: &mut crate::timer::Timer, saved_at_ms: u64) {
 /// Debounced writer. A room marks itself dirty, and the flusher writes it once.
 #[derive(Debug)]
 pub struct Snapshots {
-    store: Store,
+    store: Arc<Store>,
     dirty: Mutex<HashSet<RoomName>>,
     wake: Notify,
 }
@@ -121,7 +121,7 @@ pub struct Snapshots {
 impl Snapshots {
     pub fn new(store: Store) -> Self {
         Self {
-            store,
+            store: Arc::new(store),
             dirty: Mutex::new(HashSet::new()),
             wake: Notify::new(),
         }
@@ -136,16 +136,37 @@ impl Snapshots {
         self.dirty.lock().expect("dirty lock").len()
     }
 
-    /// Writes every dirty room now.
+    /// Writes every dirty room now, on this thread. The last flush of a
+    /// stopping process takes this path.
     pub fn flush(&self, hub: &Hub) {
-        let names: Vec<RoomName> = self.dirty.lock().expect("dirty lock").drain().collect();
-        let saved_at_ms = now_ms();
-        for name in names {
-            let Some(room) = hub.get(&name) else { continue };
-            if let Err(err) = self.store.save(&name, &room.snapshot(), saved_at_ms) {
-                tracing::warn!("could not save room {name}: {err}");
-            }
+        write_all(&self.store, self.take_pending(hub), now_ms());
+    }
+
+    /// The same, off the runtime. A slow or network mounted state directory
+    /// would otherwise stall the thread serving every WebSocket.
+    pub async fn flush_off_runtime(&self, hub: &Hub) {
+        let pending = self.take_pending(hub);
+        if pending.is_empty() {
+            return;
         }
+        let store = self.store.clone();
+        let saved_at_ms = now_ms();
+        if tokio::task::spawn_blocking(move || write_all(&store, pending, saved_at_ms))
+            .await
+            .is_err()
+        {
+            tracing::warn!("the snapshot writer stopped unexpectedly");
+        }
+    }
+
+    /// Takes the dirty set and reads each room once, so the writer holds no
+    /// lock while it touches the disk.
+    fn take_pending(&self, hub: &Hub) -> Vec<(RoomName, RoomState)> {
+        let names: Vec<RoomName> = self.dirty.lock().expect("dirty lock").drain().collect();
+        names
+            .into_iter()
+            .filter_map(|name| hub.get(&name).map(|room| (name, room.snapshot())))
+            .collect()
     }
 
     /// Drops a room from the pending set and deletes its snapshot.
@@ -164,7 +185,15 @@ impl Snapshots {
         loop {
             self.wake.notified().await;
             tokio::time::sleep(debounce).await;
-            self.flush(hub);
+            self.flush_off_runtime(hub).await;
+        }
+    }
+}
+
+fn write_all(store: &Store, rooms: Vec<(RoomName, RoomState)>, saved_at_ms: u64) {
+    for (name, state) in rooms {
+        if let Err(err) = store.save(&name, &state, saved_at_ms) {
+            tracing::warn!("could not save room {name}: {err}");
         }
     }
 }
