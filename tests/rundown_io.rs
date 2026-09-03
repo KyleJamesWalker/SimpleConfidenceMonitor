@@ -1,5 +1,5 @@
 use simple_confidence_monitor::room::DEFAULT_CUE_MS;
-use simple_confidence_monitor::room::{Command, CueDraft, Room};
+use simple_confidence_monitor::room::{Command, CueDraft, Note, Room};
 use simple_confidence_monitor::rundown_io::{
     parse_csv, parse_duration, parse_json, to_csv, to_json,
 };
@@ -12,7 +12,14 @@ fn draft(title: &str, minutes: u64) -> CueDraft {
         title: title.to_string(),
         speaker: String::new(),
         duration_ms: minutes * MIN,
-        notes: String::new(),
+        notes: Vec::new(),
+    }
+}
+
+fn note(at_ms: u64, text: &str) -> Note {
+    Note {
+        at_ms,
+        text: text.to_string(),
     }
 }
 
@@ -49,7 +56,7 @@ fn reads_a_csv_with_a_header() {
     assert_eq!(cues[0].title, "Welcome");
     assert_eq!(cues[0].speaker, "Kyle");
     assert_eq!(cues[0].duration_ms, 5 * MIN);
-    assert_eq!(cues[0].notes, "say hello");
+    assert_eq!(cues[0].notes, vec![note(0, "say hello")]);
     assert_eq!(cues[1].duration_ms, 30 * MIN);
 }
 
@@ -122,7 +129,7 @@ fn writes_a_csv_that_reads_back_the_same() {
                     title: "Panel: A, B".into(),
                     speaker: "Alice \"AJ\" Brown".into(),
                     duration_ms: 20 * MIN,
-                    notes: "two mics".into(),
+                    notes: vec![note(0, "two mics")],
                 },
                 draft("Keynote", 30),
             ],
@@ -140,7 +147,7 @@ fn writes_a_csv_that_reads_back_the_same() {
     assert_eq!(back[0].title, "Panel: A, B");
     assert_eq!(back[0].speaker, "Alice \"AJ\" Brown");
     assert_eq!(back[0].duration_ms, 20 * MIN);
-    assert_eq!(back[0].notes, "two mics");
+    assert_eq!(back[0].notes, vec![note(0, "two mics")]);
 }
 
 #[test]
@@ -234,7 +241,7 @@ fn a_field_holding_a_newline_survives_a_round_trip() {
                 title: "Keynote".into(),
                 speaker: "Alice".into(),
                 duration_ms: 30 * MIN,
-                notes: "line one\nline two".into(),
+                notes: vec![note(0, "line one\nline two")],
             }],
         },
         T0,
@@ -248,7 +255,11 @@ fn a_field_holding_a_newline_survives_a_round_trip() {
         "a quoted newline must not split the row: {csv:?}"
     );
     assert_eq!(back[0].title, "Keynote");
-    assert_eq!(back[0].notes, "line one\nline two");
+    assert_eq!(
+        back[0].notes,
+        vec![note(0, "line one\nline two")],
+        "a note keeps its line breaks through a round trip"
+    );
 }
 
 #[test]
@@ -256,7 +267,7 @@ fn a_quoted_newline_in_the_middle_of_a_document_reads_as_one_row() {
     let csv = "title,speaker,duration,notes\n\"Panel\",Alice,20,\"first\nsecond\"\nBreak,,10,\n";
     let cues = parse_csv(csv).unwrap();
     assert_eq!(cues.len(), 2);
-    assert_eq!(cues[0].notes, "first\nsecond");
+    assert_eq!(cues[0].notes, vec![note(0, "first\nsecond")]);
     assert_eq!(cues[1].title, "Break");
 }
 
@@ -285,7 +296,7 @@ fn refuses_a_quote_left_open_at_the_end() {
 #[test]
 fn a_closed_quote_at_the_end_of_a_document_is_fine() {
     let cues = parse_csv("title,notes\nPanel,\"two mics\"\n").unwrap();
-    assert_eq!(cues[0].notes, "two mics");
+    assert_eq!(cues[0].notes, vec![note(0, "two mics")]);
 }
 
 // The exported documents should be interchangeable: same field names, same
@@ -296,7 +307,7 @@ fn a_json_document_writes_the_same_fields_as_a_csv_one() {
         title: "Panel".into(),
         speaker: "Alice".into(),
         duration_ms: 330_000,
-        notes: "two mics".into(),
+        notes: vec![note(0, "two mics")],
     }];
     let room = Room::default();
     room.apply(&Command::SetCues { cues }, T0);
@@ -366,13 +377,18 @@ fn the_two_documents_round_trip_to_the_same_cues() {
                     title: "Panel: A, B".into(),
                     speaker: "Alice".into(),
                     duration_ms: 20 * MIN,
-                    notes: "two mics".into(),
+                    // Timed, multi-line, and out of order: the hardest thing
+                    // either document has to carry.
+                    notes: vec![
+                        note(5 * MIN, "Second question,\nthen the demo"),
+                        note(0, "two mics"),
+                    ],
                 },
                 CueDraft {
                     title: "Keynote".into(),
                     speaker: String::new(),
                     duration_ms: 45 * MIN + 30_000,
-                    notes: String::new(),
+                    notes: Vec::new(),
                 },
             ],
         },

@@ -586,10 +586,71 @@ button.danger:hover {
 
 .cueEdit {
   display: grid;
-  grid-template-columns: 2fr 1.4fr 0.8fr 2fr;
+  grid-template-columns: 2fr 1.4fr 0.8fr;
   gap: 0.5rem;
   align-items: end;
   width: 100%;
+}
+
+/* The notes take the full width of the row: a speaker note is a sentence or
+   two, not a field. */
+.noteCount {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: #2a2a33;
+  color: var(--dim);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.noteEdit {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.noteHeading {
+  font-size: 0.8rem;
+  color: var(--dim);
+}
+
+.noteRows {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.noteRow {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr 2rem;
+  gap: 0.4rem;
+  align-items: start;
+}
+
+.noteRow .noteAt {
+  min-height: 40px;
+  text-align: center;
+}
+
+.noteRow textarea {
+  min-height: 40px;
+  resize: vertical;
+}
+
+.removeNote {
+  min-height: 40px;
+  padding: 0;
+  color: #ff9a9a;
+  border-color: #3a1c1c;
+}
+
+.removeNote:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.addNote {
+  justify-self: start;
 }
 
 .cueEdit .transport {
@@ -605,5 +666,9 @@ button.danger:hover {
 @media (max-width: 720px) {
   .cueEdit {
     grid-template-columns: 1fr;
+  }
+
+  .noteRow {
+    grid-template-columns: 4.5rem 1fr 2rem;
   }
 }

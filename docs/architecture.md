@@ -49,7 +49,8 @@ must not blank the stage display.
 ### `src/room.rs`
 
 `RoomState` and every command that acts on it: the timer, the message, the
-display settings, the rundown, the presets and the auxiliary timer. `Room` wraps
+display settings, the rundown with its notes, the presets and the auxiliary
+timer. `Room` wraps
 that state in a mutex, owns the broadcast channel, counts connected clients, and
 marks itself dirty for the snapshot writer.
 
@@ -143,6 +144,12 @@ the browser has to draw between frames. Both sides assert the same cases, in
 `tests/timer.rs` and `web/shared.test.mjs`. Change one and change the other.
 
 ## Decisions worth knowing
+
+**A cue note carries time-in and reads as time-remaining.** A running order
+says "five minutes in". What matters on stage is the time remaining, so the
+screen converts against the cue's planned length. An operator who gives the speaker two
+more minutes moves every later note with them, and no stored note changes. `currentNote` in `web/shared.js` holds that rule, because
+picking the current note is display work and needs no server tick.
 
 **Flash is an event, not a flag.** A boolean cannot express a second flash while
 the first is still on screen. The command stamps `flash_at`, and a viewer

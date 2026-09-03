@@ -182,7 +182,11 @@ pub const PRESET_TEXT_LIMIT: usize = 120;
 pub const MAX_CUES: usize = 500;
 pub const MESSAGE_TEXT_LIMIT: usize = 280;
 pub const LINE_TEXT_LIMIT: usize = 120;
-pub const NOTES_TEXT_LIMIT: usize = 500;
+
+/// A speaker reads a note off the stage display, so one note holds a paragraph
+/// and a cue holds a handful of them.
+pub const MAX_NOTES_PER_CUE: usize = 10;
+pub const NOTE_TEXT_LIMIT: usize = 500;
 
 fn capped(text: &str, limit: usize) -> String {
     text.chars().take(limit).collect()
@@ -192,6 +196,22 @@ fn capped_option(text: &Option<String>, limit: usize) -> String {
     text.as_deref()
         .map(|text| capped(text, limit))
         .unwrap_or_default()
+}
+
+/// Notes as the state keeps them: in time order, capped, and without the empty
+/// rows an editor leaves behind.
+fn capped_notes(notes: &[Note]) -> Vec<Note> {
+    let mut kept: Vec<Note> = notes
+        .iter()
+        .filter(|note| !note.text.trim().is_empty())
+        .take(MAX_NOTES_PER_CUE)
+        .map(|note| Note {
+            at_ms: note.at_ms,
+            text: capped(note.text.trim(), NOTE_TEXT_LIMIT),
+        })
+        .collect();
+    kept.sort_by_key(|note| note.at_ms);
+    kept
 }
 
 fn default_presets() -> Vec<Preset> {
@@ -210,6 +230,18 @@ fn default_presets() -> Vec<Preset> {
     .collect()
 }
 
+/// A note for the speaker, from a point inside the cue onward. `at_ms` is time
+/// into the cue, which is how an author thinks about it. The screen picks the
+/// current note by time remaining, so adding time to a running cue slides the
+/// notes with it.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct Note {
+    #[serde(default)]
+    pub at_ms: u64,
+    #[serde(default)]
+    pub text: String,
+}
+
 /// One item in the running order.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Cue {
@@ -217,7 +249,8 @@ pub struct Cue {
     pub title: String,
     pub speaker: String,
     pub duration_ms: u64,
-    pub notes: String,
+    #[serde(default, deserialize_with = "notes_from_any")]
+    pub notes: Vec<Note>,
 }
 
 /// A cue as it arrives from an import or an API caller, before it has an id.
@@ -233,8 +266,8 @@ pub struct CueDraft {
         deserialize_with = "clock_or_millis"
     )]
     pub duration_ms: u64,
-    #[serde(default)]
-    pub notes: String,
+    #[serde(default, deserialize_with = "notes_from_any")]
+    pub notes: Vec<Note>,
 }
 
 fn default_cue_ms() -> u64 {
@@ -283,6 +316,63 @@ where
     match Option::<serde_json::Value>::deserialize(deserializer)? {
         None | Some(serde_json::Value::Null) => Ok(None),
         Some(value) => millis_from(value).map(Some).map_err(D::Error::custom),
+    }
+}
+
+/// Notes arrive as a list, or as the one string older rundowns and snapshots
+/// carry. A caller that leaves the field out changes nothing.
+fn notes_from_any<'de, D>(deserializer: D) -> Result<Vec<Note>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error;
+    let value = serde_json::Value::deserialize(deserializer)?;
+    notes_from_value(value).map_err(D::Error::custom)
+}
+
+fn optional_notes<'de, D>(deserializer: D) -> Result<Option<Vec<Note>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error;
+    match Option::<serde_json::Value>::deserialize(deserializer)? {
+        None | Some(serde_json::Value::Null) => Ok(None),
+        Some(value) => notes_from_value(value).map(Some).map_err(D::Error::custom),
+    }
+}
+
+fn notes_from_value(value: serde_json::Value) -> Result<Vec<Note>, String> {
+    match value {
+        serde_json::Value::Null => Ok(Vec::new()),
+        serde_json::Value::String(text) => Ok(crate::rundown_io::notes_from_text(&text)),
+        serde_json::Value::Array(items) => items
+            .into_iter()
+            .enumerate()
+            .map(|(index, item)| one_note(index, item))
+            .collect(),
+        other => Err(format!("{other} is not a note or a list of notes")),
+    }
+}
+
+fn one_note(index: usize, value: serde_json::Value) -> Result<Note, String> {
+    let position = index + 1;
+    match value {
+        serde_json::Value::String(text) => Ok(Note { at_ms: 0, text }),
+        serde_json::Value::Object(mut fields) => {
+            let text = match fields.remove("text") {
+                None | Some(serde_json::Value::Null) => String::new(),
+                Some(serde_json::Value::String(text)) => text,
+                Some(other) => return Err(format!("note {position}: {other} is not text")),
+            };
+            let at_ms = match fields.remove("at_ms").or_else(|| fields.remove("at")) {
+                None | Some(serde_json::Value::Null) => 0,
+                Some(value) => {
+                    millis_from(value).map_err(|err| format!("note {position}: {err}"))?
+                }
+            };
+            Ok(Note { at_ms, text })
+        }
+        other => Err(format!("note {position}: {other} is not a note")),
     }
 }
 
@@ -407,7 +497,8 @@ pub enum Command {
             deserialize_with = "optional_clock_or_millis"
         )]
         duration_ms: Option<u64>,
-        notes: Option<String>,
+        #[serde(default, deserialize_with = "optional_notes")]
+        notes: Option<Vec<Note>>,
     },
     UpdateCue {
         id: u64,
@@ -419,7 +510,8 @@ pub enum Command {
             deserialize_with = "optional_clock_or_millis"
         )]
         duration_ms: Option<u64>,
-        notes: Option<String>,
+        #[serde(default, deserialize_with = "optional_notes")]
+        notes: Option<Vec<Note>>,
     },
     RemoveCue {
         id: u64,
@@ -577,7 +669,7 @@ impl RoomState {
                     title: capped_option(title, LINE_TEXT_LIMIT),
                     speaker: capped_option(speaker, LINE_TEXT_LIMIT),
                     duration_ms: duration_ms.unwrap_or(DEFAULT_CUE_MS),
-                    notes: capped_option(notes, NOTES_TEXT_LIMIT),
+                    notes: notes.as_deref().map(capped_notes).unwrap_or_default(),
                 });
                 self.resync_screen(self.rundown.active);
                 true
@@ -604,7 +696,7 @@ impl RoomState {
                     cue.duration_ms = *duration_ms;
                 }
                 if let Some(notes) = notes {
-                    cue.notes = capped(notes, NOTES_TEXT_LIMIT);
+                    cue.notes = capped_notes(notes);
                 }
                 let changed = before != self.rundown.cues[index];
                 if changed {
@@ -690,7 +782,7 @@ impl RoomState {
                         title: capped(&draft.title, LINE_TEXT_LIMIT),
                         speaker: capped(&draft.speaker, LINE_TEXT_LIMIT),
                         duration_ms: draft.duration_ms,
-                        notes: capped(&draft.notes, NOTES_TEXT_LIMIT),
+                        notes: capped_notes(&draft.notes),
                     })
                     .collect();
                 let had_active = self.rundown.active;

@@ -1,4 +1,4 @@
-use simple_confidence_monitor::room::{Command, CueDraft, Room, RoomState};
+use simple_confidence_monitor::room::{Command, CueDraft, Note, Room, RoomState};
 use simple_confidence_monitor::timer::Run;
 
 const T0: u64 = 1_700_000_000_000;
@@ -274,7 +274,10 @@ fn editing_the_active_cue_leaves_a_running_timer_alone() {
             title: None,
             speaker: None,
             duration_ms: None,
-            notes: Some("remember the mic".into()),
+            notes: Some(vec![Note {
+                at_ms: 0,
+                text: "remember the mic".into(),
+            }]),
         },
         T0 + 5 * MIN,
     );
@@ -285,7 +288,7 @@ fn editing_the_active_cue_leaves_a_running_timer_alone() {
         "a note edit must not stop the clock on a talk in progress"
     );
     assert_eq!(state.timer.elapsed_at(T0 + 5 * MIN), 5 * MIN);
-    assert_eq!(state.rundown.cues[1].notes, "remember the mic");
+    assert_eq!(state.rundown.cues[1].notes[0].text, "remember the mic");
 }
 
 #[test]
@@ -478,7 +481,7 @@ fn replacing_the_rundown_clears_a_screen_whose_cue_is_gone() {
                 title: "Something else".into(),
                 speaker: String::new(),
                 duration_ms: 5 * MIN,
-                notes: String::new(),
+                notes: Vec::new(),
             }],
         },
         T0,

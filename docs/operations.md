@@ -62,7 +62,7 @@ both at once, which is what one talk ending and the next beginning looks like.
 Auto advance does the same thing on its own when a cue reaches zero.
 
 Each row in the rundown carries Edit, which opens the cue in place for its
-title, speaker, length and note.
+title, speaker, length and notes.
 
 | Key | Action |
 |---|---|
@@ -77,6 +77,25 @@ title, speaker, length and note.
 A row of quick messages sits above the message box, so the common notes take one
 press. Edit them on the console, or replace them with `set_presets`. A room holds
 at most eight.
+
+## Notes for the speaker
+
+A cue carries notes, and each one starts at a point inside the cue. The stage
+display shows the note that is due, under the timer, over as many as five lines.
+The next note replaces it when that one comes due. The Notes button on the
+console turns them on for the room, and `?notes=0` keeps them off one screen.
+
+Write the time as minutes into the cue, which is how a running order reads. The
+screen measures by the time left, against the cue's planned length. A 30 minute
+cue with a note at `5:00` shows it with 25 minutes left.
+
+Give the speaker two more minutes mid-talk and every later note slides with
+them. A note earns its place at five minutes to go, not at a wall clock moment.
+Time added before the cue starts does not delay the opening note.
+
+Each row in the rundown says how many notes a cue holds. Edit opens them as one
+row per note. A cue holds at most ten notes of 500 characters, and one note may
+run over several lines.
 
 The chime sounds a tone when the timer reaches zero. It starts off. A browser
 blocks sound until someone interacts with the page, so a viewer with the chime on
@@ -139,7 +158,7 @@ state, so a caller can confirm the `rev` moved.
 | `flash` | | Flashes the viewer twice |
 | `blackout` | `on` | Cuts the viewer to black |
 | `display` | `title`, `next_up`, `show_clock`, `clock_24h`, `show_progress`, `mirror`, `scale`, `chime`, `show_speaker`, `show_notes` | Screen settings. Every field is optional |
-| `add_cue` | `title`, `speaker`, `duration`, `notes` | Appends a cue |
+| `add_cue` | `title`, `speaker`, `duration`, `notes` | Appends a cue. `notes` takes the list above |
 | `update_cue` | `id`, and any cue field | Changes one cue |
 | `remove_cue` | `id` | Drops a cue |
 | `move_cue` | `id`, `to` | Reorders |
@@ -197,10 +216,11 @@ because `-30000` there means half a minute off and nothing else. So does
 
 Everything in a room rides in every state frame to every client, so each part of
 it has a limit. A room holds 8 presets of 120 characters and 500 cues. A cue
-title or a speaker takes 120 characters and a cue note 500. A message to the
-speaker takes 280, and a screen title or next-up line 120. Text past a limit is
-cut; an import of more than 500 cues is refused with a message rather than
-truncated in silence.
+title or a speaker takes 120 characters. A cue holds 10 notes of 500 characters
+each. A message to the speaker takes 280, and a screen title or next-up line 120.
+
+The server cuts text past a limit. An import gets a refusal and a message
+instead. That happens past 500 cues, or past 100,000 characters of notes.
 
 ## A running order from a spreadsheet
 
@@ -217,7 +237,45 @@ them in any order, and common spellings map onto the same column, so `cue`,
 `presenter` and `length` work too. An empty duration falls back to five minutes.
 
 The JSON export carries the same four fields with the same duration format, so
-either document rebuilds the same running order.
+either document rebuilds the same running order. Notes are a list:
+
+```json
+{
+  "cues": [
+    {
+      "title": "Keynote",
+      "speaker": "Alice",
+      "duration": "30:00",
+      "notes": [
+        { "at": "0:00", "text": "Open with the demo" },
+        { "at": "5:00", "text": "Three pillars, then the customer slide" },
+        { "at": "25:00", "text": "Wrap up and hand to the panel" }
+      ]
+    }
+  ]
+}
+```
+
+`at` is time into the cue. It takes `5:00`, or a bare `5` for minutes, the way
+`duration` does. Leave it out and the note starts with the cue. The server drops
+a note with no text.
+
+In CSV, the `notes` column holds the same list as text. One note per line, each
+opening with its time. Quote the field and a note may run over several lines: an
+indented line continues the note above it. A line that does not open with a clock
+time is text. So `3 things to cover` stays a note, rather than becoming a cue
+point three minutes in.
+
+```csv
+title,speaker,duration,notes
+Keynote,Alice,30:00,"0:00 Open with the demo
+5:00 Three pillars, then
+  the customer slide
+25:00 Wrap up and hand to the panel"
+```
+
+A rundown written before notes had times still loads. One string becomes one
+note that starts with the cue.
 
 A row without a title is an error, and a refused import leaves the running order
 alone. The console carries the same import and export beside the cue list.

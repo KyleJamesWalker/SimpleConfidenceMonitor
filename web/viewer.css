@@ -343,11 +343,24 @@ body {
   min-width: 0;
 }
 
+/* Under the timer, in the speaker's eye line, so a note is meant to be read
+   rather than glanced at. It wraps, keeps the line breaks the operator typed,
+   and gives up after five lines rather than pushing the timer off the screen. */
 .notes {
-  font-size: calc(min(3vh, 2.4vw) * var(--scale));
+  margin-top: 1.5vh;
+  max-width: 74vw;
+  font-size: calc(min(4.4vh, 3vw) * var(--scale));
+  line-height: 1.25;
+  text-align: center;
+  text-wrap: balance;
+  white-space: pre-wrap;
   color: var(--warn);
-  max-width: 40vw;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+}
+
+.notes:empty {
+  display: none;
 }
