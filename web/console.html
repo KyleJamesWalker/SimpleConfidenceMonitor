@@ -10,12 +10,13 @@
     <header class="bar">
       <div class="room">
         <strong id="roomName"></strong>
+        <a id="pickerLink" href="/">room picker</a>
         <a id="viewerLink" target="_blank" rel="noopener">open viewer</a>
         <a id="agendaLink" target="_blank" rel="noopener">open agenda</a>
       </div>
       <div class="conn">
         <span id="clients" class="clients"></span>
-        <span id="status" class="status offline">offline</span>
+        <span id="status" class="status offline" role="status" aria-live="polite">offline</span>
       </div>
     </header>
 
@@ -80,7 +81,7 @@
       </section>
 
       <section class="panel">
-        <h2>Message to speaker <button id="editPresets" class="linkish" type="button">edit presets</button></h2>
+        <h2>Message to speaker <button id="editPresets" class="linkish" type="button" aria-pressed="false">edit presets</button></h2>
         <div class="presets" id="presets"></div>
         <div class="presetEditor" id="presetEditor" hidden>
           <div id="presetRows"></div>
@@ -92,12 +93,12 @@
         </div>
         <textarea id="message" rows="2" placeholder="Wrap up"></textarea>
         <div class="tones">
-          <button data-tone="neutral" class="tone">Neutral</button>
-          <button data-tone="warn" class="tone">Warn</button>
-          <button data-tone="alert" class="tone">Alert</button>
+          <button data-tone="neutral" class="tone" aria-pressed="false">Neutral</button>
+          <button data-tone="warn" class="tone" aria-pressed="false">Warn</button>
+          <button data-tone="alert" class="tone" aria-pressed="false">Alert</button>
         </div>
         <div class="transport">
-          <button id="showMessage" class="primary">Show</button>
+          <button id="showMessage" class="primary" aria-pressed="false">Show</button>
           <button id="hideMessage">Hide</button>
           <button id="flash">Flash</button>
         </div>
@@ -114,14 +115,14 @@
           <input id="nextUp" type="text" placeholder="Panel: Q&amp;A" />
         </label>
         <div class="toggles">
-          <button id="blackout" data-toggle>Blackout</button>
-          <button id="showClock" data-toggle>Clock</button>
-          <button id="clock24h" data-toggle>24 hour</button>
-          <button id="showProgress" data-toggle>Progress</button>
-          <button id="mirror" data-toggle>Mirror</button>
-          <button id="chime" data-toggle>Chime</button>
-          <button id="showSpeaker" data-toggle>Speaker</button>
-          <button id="showNotes" data-toggle>Notes</button>
+          <button id="blackout" data-toggle aria-pressed="false">Blackout</button>
+          <button id="showClock" data-toggle aria-pressed="false">Clock</button>
+          <button id="clock24h" data-toggle aria-pressed="false">24 hour</button>
+          <button id="showProgress" data-toggle aria-pressed="false">Progress</button>
+          <button id="mirror" data-toggle aria-pressed="false">Mirror</button>
+          <button id="chime" data-toggle aria-pressed="false">Chime</button>
+          <button id="showSpeaker" data-toggle aria-pressed="false">Speaker</button>
+          <button id="showNotes" data-toggle aria-pressed="false">Notes</button>
         </div>
         <label class="field">
           <span>Text size <output id="scaleOut">100%</output></span>
@@ -133,7 +134,7 @@
         <h2>Aux timer</h2>
         <div class="auxRow">
           <span class="auxReadout" id="auxReadout">--:--</span>
-          <button id="auxVisible" data-toggle>Show</button>
+          <button id="auxVisible" data-toggle aria-pressed="false">Show</button>
         </div>
         <label class="field">
           <span>Label</span>
@@ -170,7 +171,7 @@
           <button id="nextAndStart" class="primary">Next &amp; go</button>
         </div>
         <div class="toggles">
-          <button id="autoAdvance" data-toggle>Auto advance</button>
+          <button id="autoAdvance" data-toggle aria-pressed="false">Auto advance</button>
         </div>
       </section>
 
@@ -197,7 +198,7 @@
       </section>
     </main>
 
-    <div class="toast" id="toast" hidden></div>
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
     <script type="module" src="/assets/console.js"></script>
   </body>
 </html>

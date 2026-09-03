@@ -2,35 +2,84 @@
 
 export const MIN = 60000;
 
+// WebSocket.OPEN, spelled out so this module also runs under a test double.
+const OPEN = 1;
+
+// How long the socket waits before its first reconnect, and the ceiling it
+// doubles up to.
+export const INITIAL_BACKOFF_MS = 250;
+export const MAX_BACKOFF_MS = 5000;
+
+// Capped doubling, so a server that stays down is polled at a steady rate.
+export function nextBackoffMs(current) {
+  return Math.min(current * 2, MAX_BACKOFF_MS);
+}
+
+// Keydowns the focused control owns. A text field takes every key; a button or
+// a link takes the two that activate it, or tabbing to it makes it unusable.
+export function targetOwnsKey(tagName, key) {
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tagName)) return true;
+  return (tagName === 'BUTTON' || tagName === 'A') && (key === ' ' || key === 'Enter');
+}
+
+async function askAuth() {
+  try {
+    const response = await fetch('/api/auth', { cache: 'no-store' });
+    return response.status;
+  } catch {
+    // No answer at all is the network, not the token.
+    return 0;
+  }
+}
+
 // The server owns the clock. Each client estimates its offset so a running
 // timer renders smoothly between state frames.
 export class RoomSocket {
-  constructor({ room, role, onState, onStatus, onError }) {
+  constructor({
+    room,
+    role,
+    onState,
+    onStatus,
+    onError,
+    onRefused,
+    openSocket,
+    probeAuth,
+    schedule,
+  }) {
     this.room = room;
     this.role = role;
     this.onState = onState || (() => {});
     this.onStatus = onStatus || (() => {});
     this.onError = onError || (() => {});
+    this.onRefused = onRefused || (() => {});
+    this.openSocket = openSocket || ((url) => new WebSocket(url));
+    this.probeAuth = probeAuth || askAuth;
+    this.schedule = schedule || ((run, wait) => setTimeout(run, wait));
     this.offsets = [];
     this.offsetMs = 0;
-    this.backoffMs = 250;
+    this.backoffMs = INITIAL_BACKOFF_MS;
     this.socket = null;
+    this.handshook = false;
     this.connect();
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && this.socket?.readyState !== WebSocket.OPEN) this.connect();
-    });
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && this.socket?.readyState !== OPEN) this.connect();
+      });
+    }
   }
 
   connect() {
-    if (this.socket && this.socket.readyState <= WebSocket.OPEN) return;
+    if (this.socket && this.socket.readyState <= OPEN) return;
     const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
     const url = `${scheme}://${location.host}/api/rooms/${this.room}/ws?role=${this.role}`;
     this.onStatus('connecting');
-    const socket = new WebSocket(url);
+    this.handshook = false;
+    const socket = this.openSocket(url);
     this.socket = socket;
 
     socket.addEventListener('open', () => {
-      this.backoffMs = 250;
+      this.handshook = true;
+      this.backoffMs = INITIAL_BACKOFF_MS;
       this.onStatus('online');
       this.probeClock();
     });
@@ -39,12 +88,20 @@ export class RoomSocket {
     socket.addEventListener('error', () => this.retry());
   }
 
-  retry() {
+  async retry() {
+    // An edit socket rides a cookie that expires. A handshake the server
+    // refused is not a network drop, and reconnecting on backoff would leave
+    // the operator staring at `offline` with no way to enter the token again.
+    if (this.role === 'edit' && !this.handshook && (await this.probeAuth()) === 401) {
+      this.onStatus('unauthorized');
+      this.onRefused();
+      return;
+    }
     this.onStatus('offline');
     const wait = this.backoffMs;
-    this.backoffMs = Math.min(this.backoffMs * 2, 5000);
+    this.backoffMs = nextBackoffMs(this.backoffMs);
     clearTimeout(this.retryTimer);
-    this.retryTimer = setTimeout(() => this.connect(), wait);
+    this.retryTimer = this.schedule(() => this.connect(), wait);
   }
 
   receive(raw) {
@@ -85,7 +142,7 @@ export class RoomSocket {
   }
 
   send(message) {
-    if (this.socket?.readyState === WebSocket.OPEN) {
+    if (this.socket?.readyState === OPEN) {
       this.socket.send(JSON.stringify(message));
     }
   }
@@ -211,19 +268,25 @@ export function screenOverrides(search) {
 }
 
 // What the agenda repaints on. Every field the table shows belongs here, or an
-// edit to it leaves the page stale until something else moves.
+// edit to it leaves the page stale until something else moves. Times round to
+// the minute the table prints: before a show every projected time tracks the
+// wall clock, and raw milliseconds would rebuild every row twice a second.
 export function agendaSignature(rows) {
   return JSON.stringify(
     rows.map((row) => [
       row.id,
       row.state,
-      row.startMs,
-      row.endMs,
+      minuteOf(row.startMs),
+      minuteOf(row.endMs),
       row.title,
       row.speaker,
       row.durationMs,
     ]),
   );
+}
+
+function minuteOf(ms) {
+  return ms === null || ms === undefined ? null : Math.floor(ms / MIN);
 }
 
 export function activeCue(rundown) {
