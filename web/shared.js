@@ -298,6 +298,24 @@ function minuteOf(ms) {
   return ms === null || ms === undefined ? null : Math.floor(ms / MIN);
 }
 
+// The note the speaker should be reading. A note carries the time *into* the
+// cue, and this measures by time *remaining* against the cue's planned length.
+// So +2 minutes mid-talk slides every later note with it, which is what an
+// operator buying the speaker time means to do. Remaining is clamped to the
+// planned length, or time added before the start would delay the opening note.
+export function currentNote(notes, plannedMs, remainingMs) {
+  const list = [...(notes || [])].filter((note) => note?.text).sort((a, b) => a.at_ms - b.at_ms);
+  if (!list.length) return null;
+  // Nothing to measure against in count-up or time-of-day: show the opener.
+  if (!plannedMs) return list[0];
+  const remaining = Math.min(remainingMs, plannedMs);
+  let current = list[0];
+  for (const note of list) {
+    if (remaining <= plannedMs - note.at_ms) current = note;
+  }
+  return current;
+}
+
 export function activeCue(rundown) {
   const cues = rundown?.cues || [];
   return cues.find((cue) => cue.id === rundown.active) || null;

@@ -1,5 +1,6 @@
 import {
   activeCue,
+  currentNote,
   RoomSocket,
   formatClock,
   formatDuration,
@@ -74,7 +75,6 @@ function applyState(frame) {
   }
   const cue = activeCue(frame.rundown);
   setText(el.speaker, pick('speaker', display?.show_speaker) ? cue?.speaker : '');
-  setText(el.notes, pick('notes', display?.show_notes) ? cue?.notes : '');
   if (message) {
     setText(el.message, message.text);
     el.message.className = `message ${message.tone || 'neutral'}${
@@ -82,6 +82,19 @@ function applyState(frame) {
     }`;
   }
   if (timer) render();
+}
+
+// Which note is due depends on the time left, so this runs with the readout
+// rather than on a state frame.
+function drawNote(out) {
+  const cue = activeCue(state.rundown);
+  const wanted = pick('notes', state.display?.show_notes);
+  const note = wanted && cue ? currentNote(cue.notes, cue.duration_ms, out.remainingMs) : null;
+  const text = note?.text || '';
+  if (painted.note !== text) {
+    el.notes.textContent = text;
+    painted.note = text;
+  }
 }
 
 function pick(key, fallback) {
@@ -168,6 +181,8 @@ function render() {
     el.armed.hidden = !armedText;
     painted.armed = armedText;
   }
+
+  drawNote(out);
 
   const stale = offlineSince && Date.now() - offlineSince > 5000;
   if (el.status.hidden === Boolean(stale)) el.status.hidden = !stale;

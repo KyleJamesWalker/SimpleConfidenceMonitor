@@ -74,6 +74,23 @@ fn the_viewer_badge_is_a_live_region_and_its_icon_button_has_a_label() {
     );
 }
 
+// A speaker reads a note off the stage display, so it belongs under the timer
+// rather than in the footer beside the crew lines.
+#[test]
+fn the_speaker_note_sits_under_the_timer() {
+    let middle = VIEWER
+        .split("<main class=\"middle\">")
+        .nth(1)
+        .and_then(|rest| rest.split("</main>").next())
+        .expect("the viewer has a middle block");
+    assert!(
+        middle.contains("id=\"notes\""),
+        "the note must sit with the timer, not in the footer"
+    );
+    let timer_first = middle.find("id=\"timer\"") < middle.find("id=\"notes\"");
+    assert!(timer_first, "the timer stays above the note");
+}
+
 #[test]
 fn the_console_links_back_to_the_picker() {
     assert!(
