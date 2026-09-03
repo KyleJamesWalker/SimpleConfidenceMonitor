@@ -29,7 +29,8 @@ const TONES = ['neutral', 'warn', 'alert'];
 const MAX_PRESETS = 8;
 // The server cuts text past these, so the fields stop there instead.
 const LINE_LIMIT = 120;
-const NOTES_LIMIT = 500;
+const NOTE_LIMIT = 500;
+const MAX_NOTES = 10;
 const PRESET_LIMIT = 120;
 
 // An editor holds its own copy while open, so an arriving frame cannot
@@ -199,6 +200,16 @@ function drawRundown(frame) {
     length.className = 'len';
     length.textContent = formatDuration(cue.duration_ms);
 
+    // Notes live behind Edit, so the row says whether there are any.
+    const count = cue.notes?.length || 0;
+    if (count) {
+      const badge = document.createElement('span');
+      badge.className = 'noteCount';
+      badge.textContent = `${count} note${count === 1 ? '' : 's'}`;
+      badge.title = cue.notes.map((note) => note.text).join('\n');
+      length.append(badge);
+    }
+
     const actions = document.createElement('span');
     actions.className = 'actions';
     const named = cue.title || `cue ${index + 1}`;
@@ -249,7 +260,7 @@ function openCueEditor(row, cue) {
     inputMode: 'numeric',
     placeholder: '5:00',
   });
-  const notes = field('Note', cue.notes, { maxLength: NOTES_LIMIT });
+  const notes = noteEditor(cue.notes);
 
   const buttons = document.createElement('div');
   buttons.className = 'transport';
@@ -270,11 +281,17 @@ function openCueEditor(row, cue) {
   buttons.append(save, cancel);
 
   form.append(title.wrap, speaker.wrap, length.wrap, notes.wrap, buttons);
+
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     const ms = parseDuration(length.input.value);
     if (ms === null) {
       toast('Cue length takes minutes, or mm:ss');
+      return;
+    }
+    const written = notes.read();
+    if (written === null) {
+      toast('A note time takes minutes, or mm:ss');
       return;
     }
     send({
@@ -283,7 +300,7 @@ function openCueEditor(row, cue) {
       title: title.input.value.trim(),
       speaker: speaker.input.value.trim(),
       duration_ms: ms,
-      notes: notes.input.value.trim(),
+      notes: written,
     });
     editingCue = null;
   });
@@ -299,6 +316,93 @@ function removeCue(cue, named) {
   const consequence = onAir ? ' It is on air, so the stage title and next up go blank.' : '';
   if (!window.confirm(`Remove ${named} from the rundown?${consequence}`)) return;
   send({ cmd: 'remove_cue', id: cue.id });
+}
+
+// A cue's notes, as one row per note: when it starts, and what it says. The
+// time is minutes into the cue, which is how a rundown is written. The screen
+// turns it into time remaining.
+function noteEditor(notes) {
+  const wrap = document.createElement('div');
+  wrap.className = 'noteEdit';
+
+  const heading = document.createElement('span');
+  heading.className = 'noteHeading';
+  heading.textContent = 'Notes for the speaker (time into the cue)';
+
+  const rows = document.createElement('div');
+  rows.className = 'noteRows';
+
+  const add = document.createElement('button');
+  add.type = 'button';
+  add.className = 'addNote';
+  add.textContent = 'Add note';
+  add.addEventListener('click', () => {
+    if (rows.children.length >= MAX_NOTES) {
+      toast(`A cue holds at most ${MAX_NOTES} notes`);
+      return;
+    }
+    const row = noteRow({ at_ms: suggestedAt(rows), text: '' });
+    rows.append(row);
+    row.querySelector('.noteText').focus();
+  });
+
+  rows.replaceChildren(...(notes || []).map(noteRow));
+  wrap.append(heading, rows, add);
+
+  // null when a time does not parse, so the caller can say so and keep the form.
+  const read = () => {
+    const written = [];
+    for (const row of rows.children) {
+      const text = row.querySelector('.noteText').value.trim();
+      if (!text) continue;
+      const at = parseDuration(row.querySelector('.noteAt').value || '0');
+      if (at === null) return null;
+      written.push({ at_ms: at, text });
+    }
+    return written.sort((left, right) => left.at_ms - right.at_ms);
+  };
+
+  return { wrap, read };
+}
+
+function noteRow(note) {
+  const row = document.createElement('div');
+  row.className = 'noteRow';
+
+  const at = document.createElement('input');
+  at.type = 'text';
+  at.className = 'noteAt';
+  at.inputMode = 'numeric';
+  at.placeholder = '0:00';
+  at.value = formatDuration(note.at_ms || 0);
+  at.setAttribute('aria-label', 'Minutes into the cue');
+
+  const text = document.createElement('textarea');
+  text.className = 'noteText';
+  text.rows = 2;
+  text.maxLength = NOTE_LIMIT;
+  text.placeholder = 'What the speaker should read';
+  text.value = note.text || '';
+  text.setAttribute('aria-label', 'Note text');
+
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'removeNote';
+  remove.textContent = '\u00d7';
+  remove.title = 'Remove this note';
+  remove.setAttribute('aria-label', 'Remove this note');
+  remove.addEventListener('click', () => row.remove());
+
+  row.append(at, text, remove);
+  return row;
+}
+
+// A new note lands after the last one, which is where an author is working.
+function suggestedAt(rows) {
+  const times = [...rows.children]
+    .map((row) => parseDuration(row.querySelector('.noteAt').value || '0'))
+    .filter((ms) => ms !== null);
+  return times.length ? Math.max(...times) + 5 * MIN : 0;
 }
 
 function action(label, onClick, description = label) {
