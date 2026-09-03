@@ -213,7 +213,13 @@ fn a_snapshot_written_before_a_field_existed_still_loads() {
           "show_progress": true, "blackout": false, "mirror": false, "scale": 100,
           "flash_at": 0
         },
-        "rundown": {"cues": [], "active": null, "auto_advance": false, "next_id": 0}
+        "rundown": {
+          "cues": [
+            {"id": 1, "title": "Keynote", "speaker": "Alice", "duration_ms": 600000,
+             "notes": "hard out at 10:20"}
+          ],
+          "active": null, "auto_advance": false, "next_id": 1
+        }
       }
     }"#;
     std::fs::write(dir.join("keynote.json"), body).unwrap();
@@ -223,6 +229,11 @@ fn a_snapshot_written_before_a_field_existed_still_loads() {
     assert_eq!(loaded[0].1.display.title, "Keynote");
     assert_eq!(loaded[0].1.timer.start_at_ms, None);
     assert!(!loaded[0].1.display.chime);
+    // A cue note was one string before it became a timed list.
+    let notes = &loaded[0].1.rundown.cues[0].notes;
+    assert_eq!(notes.len(), 1);
+    assert_eq!(notes[0].at_ms, 0);
+    assert_eq!(notes[0].text, "hard out at 10:20");
 }
 
 #[test]

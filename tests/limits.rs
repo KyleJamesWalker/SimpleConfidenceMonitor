@@ -1,5 +1,5 @@
 use simple_confidence_monitor::room::{
-    Command, CueDraft, LINE_TEXT_LIMIT, MAX_CUES, MESSAGE_TEXT_LIMIT, NOTES_TEXT_LIMIT, Room,
+    Command, CueDraft, LINE_TEXT_LIMIT, MAX_CUES, MESSAGE_TEXT_LIMIT, NOTE_TEXT_LIMIT, Note, Room,
 };
 use simple_confidence_monitor::rundown_io::{parse_csv, parse_json};
 
@@ -14,7 +14,14 @@ fn draft(title: &str) -> CueDraft {
         title: title.to_string(),
         speaker: String::new(),
         duration_ms: 60_000,
-        notes: String::new(),
+        notes: Vec::new(),
+    }
+}
+
+fn note(at_ms: u64, text: &str) -> Note {
+    Note {
+        at_ms,
+        text: text.to_string(),
     }
 }
 
@@ -62,14 +69,14 @@ fn a_long_cue_field_is_capped_on_the_way_in() {
             title: Some(long(LINE_TEXT_LIMIT + 10)),
             speaker: Some(long(LINE_TEXT_LIMIT + 10)),
             duration_ms: None,
-            notes: Some(long(NOTES_TEXT_LIMIT + 10)),
+            notes: Some(vec![note(0, &long(NOTE_TEXT_LIMIT + 10))]),
         },
         T0,
     );
     let cue = &state.rundown.cues[0];
     assert_eq!(cue.title.chars().count(), LINE_TEXT_LIMIT);
     assert_eq!(cue.speaker.chars().count(), LINE_TEXT_LIMIT);
-    assert_eq!(cue.notes.chars().count(), NOTES_TEXT_LIMIT);
+    assert_eq!(cue.notes[0].text.chars().count(), NOTE_TEXT_LIMIT);
 }
 
 #[test]
@@ -94,14 +101,14 @@ fn a_long_cue_field_is_capped_on_an_edit() {
             title: Some(long(LINE_TEXT_LIMIT + 10)),
             speaker: None,
             duration_ms: None,
-            notes: Some(long(NOTES_TEXT_LIMIT + 10)),
+            notes: Some(vec![note(0, &long(NOTE_TEXT_LIMIT + 10))]),
         },
         T0,
     );
     assert_eq!(state.rundown.cues[0].title.chars().count(), LINE_TEXT_LIMIT);
     assert_eq!(
-        state.rundown.cues[0].notes.chars().count(),
-        NOTES_TEXT_LIMIT
+        state.rundown.cues[0].notes[0].text.chars().count(),
+        NOTE_TEXT_LIMIT
     );
 }
 

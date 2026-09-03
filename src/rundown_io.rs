@@ -1,4 +1,4 @@
-use crate::room::{Cue, CueDraft, DEFAULT_CUE_MS, MAX_CUES};
+use crate::room::{Cue, CueDraft, DEFAULT_CUE_MS, MAX_CUES, Note};
 
 /// Accepts minutes, mm:ss, or hh:mm:ss.
 pub fn parse_duration(raw: &str) -> Option<u64> {
@@ -30,6 +30,75 @@ pub fn parse_duration(raw: &str) -> Option<u64> {
 
 const HEADER: &str = "title,speaker,duration,notes";
 
+/// Notes for a whole rundown. Every frame carries all of them to every client,
+/// and a slow client may hold a backlog of frames.
+pub const RUNDOWN_NOTES_LIMIT: usize = 100_000;
+
+/// Notes as one block of text, which is how a CSV column carries them and how
+/// a rundown written before notes had times reads. A leading clock time starts
+/// a note. Any other line continues the note above it, so a note keeps its
+/// line breaks through a round trip.
+pub fn notes_from_text(body: &str) -> Vec<Note> {
+    let mut notes: Vec<Note> = Vec::new();
+    for line in body.lines() {
+        let indented = line.starts_with([' ', '\t']);
+        match split_at_time(line.trim()) {
+            Some((at_ms, text)) if !indented => notes.push(Note {
+                at_ms,
+                text: text.to_string(),
+            }),
+            _ => match notes.last_mut() {
+                Some(note) => {
+                    note.text.push('\n');
+                    note.text.push_str(line.trim());
+                }
+                None => notes.push(Note {
+                    at_ms: 0,
+                    text: line.trim().to_string(),
+                }),
+            },
+        }
+    }
+    for note in &mut notes {
+        note.text = note.text.trim().to_string();
+    }
+    notes.retain(|note| !note.text.is_empty());
+    notes
+}
+
+/// The reverse. A note's later lines are indented, so reading it back does not
+/// mistake one of them for a new note.
+pub fn notes_to_text(notes: &[Note]) -> String {
+    notes
+        .iter()
+        .map(|note| {
+            let mut lines = note.text.lines();
+            let mut out = format!(
+                "{} {}",
+                format_duration(note.at_ms),
+                lines.next().unwrap_or("")
+            );
+            for line in lines {
+                out.push_str("\n  ");
+                out.push_str(line);
+            }
+            out
+        })
+        .collect::<Vec<String>>()
+        .join("\n")
+}
+
+/// "5:00 wrap up" splits into the time and the rest. The time needs a colon:
+/// a note that opens with a bare number is text, not a cue point.
+fn split_at_time(line: &str) -> Option<(u64, &str)> {
+    let (head, rest) = line.split_once(' ')?;
+    if !head.contains(':') {
+        return None;
+    }
+    let at_ms = parse_duration(head)?;
+    Some((at_ms, rest.trim_start()))
+}
+
 /// A cue as a document rather than as live state: no id, and a duration in the
 /// same shape the CSV and the console use.
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -37,7 +106,15 @@ pub struct CueDocument {
     pub title: String,
     pub speaker: String,
     pub duration: String,
-    pub notes: String,
+    pub notes: Vec<NoteDocument>,
+}
+
+/// A note as a document carries it: the time into the cue in clock form, the
+/// way the duration beside it reads.
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct NoteDocument {
+    pub at: String,
+    pub text: String,
 }
 
 #[derive(serde::Deserialize)]
@@ -53,7 +130,14 @@ pub fn to_json(cues: &[Cue]) -> String {
             title: cue.title.clone(),
             speaker: cue.speaker.clone(),
             duration: format_duration(cue.duration_ms),
-            notes: cue.notes.clone(),
+            notes: cue
+                .notes
+                .iter()
+                .map(|note| NoteDocument {
+                    at: format_duration(note.at_ms),
+                    text: note.text.clone(),
+                })
+                .collect(),
         })
         .collect();
     serde_json::json!({ "cues": document }).to_string()
@@ -97,14 +181,14 @@ pub fn parse_csv(body: &str) -> Result<Vec<CueDraft>, String> {
             title: String::new(),
             speaker: String::new(),
             duration_ms: DEFAULT_CUE_MS,
-            notes: String::new(),
+            notes: Vec::new(),
         };
         for (index, value) in fields.iter().enumerate() {
             let value = value.trim();
             match columns.get(index).copied().unwrap_or("") {
                 "title" => cue.title = value.to_string(),
                 "speaker" => cue.speaker = value.to_string(),
-                "notes" => cue.notes = value.to_string(),
+                "notes" => cue.notes = notes_from_text(value),
                 "duration" if !value.is_empty() => {
                     cue.duration_ms = parse_duration(value)
                         .ok_or_else(|| format!("line {line}: {value} is not a duration"))?;
@@ -121,12 +205,23 @@ pub fn parse_csv(body: &str) -> Result<Vec<CueDraft>, String> {
 }
 
 /// A rundown rides in every state frame to every client, so an import that
-/// would not fit a show is refused rather than truncated in silence.
+/// would not fit a show is refused rather than truncated in silence. The notes
+/// carry the most text by far, so they have a budget of their own.
 fn within_ceiling(cues: Vec<CueDraft>) -> Result<Vec<CueDraft>, String> {
     if cues.len() > MAX_CUES {
         return Err(format!(
             "a rundown holds at most {MAX_CUES} cues, and this one has {}",
             cues.len()
+        ));
+    }
+    let notes: usize = cues
+        .iter()
+        .flat_map(|cue| cue.notes.iter())
+        .map(|note| note.text.chars().count())
+        .sum();
+    if notes > RUNDOWN_NOTES_LIMIT {
+        return Err(format!(
+            "a rundown holds at most {RUNDOWN_NOTES_LIMIT} characters of notes, and this one has {notes}"
         ));
     }
     Ok(cues)
@@ -140,7 +235,7 @@ pub fn to_csv(cues: &[Cue]) -> String {
             escape(&cue.title),
             escape(&cue.speaker),
             format_duration(cue.duration_ms),
-            escape(&cue.notes),
+            escape(&notes_to_text(&cue.notes)),
         ];
         out.push_str(&row.join(","));
         out.push('\n');

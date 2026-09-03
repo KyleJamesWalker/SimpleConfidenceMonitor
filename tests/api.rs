@@ -647,7 +647,8 @@ async fn a_get_command_keeps_a_numeric_speaker_and_note_as_text() {
     .unwrap();
     let cue = &body["rundown"]["cues"][0];
     assert_eq!(cue["speaker"], "1234");
-    assert_eq!(cue["notes"], "0");
+    assert_eq!(cue["notes"][0]["text"], "0");
+    assert_eq!(cue["notes"][0]["at_ms"], 0);
     assert_eq!(cue["title"], "Opening");
 }
 
