@@ -151,6 +151,10 @@ jobs:
             target: aarch64-apple-darwin
             asset: simple-confidence-monitor-gui-aarch64-macos
             file: simple-confidence-monitor-gui-aarch64-macos.zip
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            asset: simple-confidence-monitor-gui-x86_64-macos
+            file: simple-confidence-monitor-gui-x86_64-macos.zip
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             asset: simple-confidence-monitor-gui-x86_64-windows
