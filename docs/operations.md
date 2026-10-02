@@ -60,7 +60,8 @@ for each platform to every run:
 
 | Artifact | Contains |
 |---|---|
-| `simple-confidence-monitor-gui-aarch64-macos` | `Simple Confidence Monitor.app`, zipped |
+| `simple-confidence-monitor-gui-aarch64-macos` | `Simple Confidence Monitor.app` for Apple Silicon, zipped |
+| `simple-confidence-monitor-gui-x86_64-macos` | `Simple Confidence Monitor.app` for Intel Macs, zipped |
 | `simple-confidence-monitor-gui-x86_64-windows` | The `.exe`. It opens no console window |
 | `simple-confidence-monitor-gui-x86_64-linux` | The binary in a `.tar.gz`, which keeps it executable |
 
@@ -79,7 +80,9 @@ xattr -dr com.apple.quarantine "Simple Confidence Monitor.app"
 | State directory | `--state-dir` |
 | mDNS and Advertised name | `--mdns` and `--name` |
 
-The fields lock while the server runs. Stop it to change one. The window lists
+The fields lock while the server runs. Stop it to change one. A server open
+to this network with no token shows an amber warning under the status line for
+as long as it runs. The window lists
 each room with its connected stage displays and consoles, and opens any screen
 in the default browser. A console link carries the token, so it skips the form.
 The log panel shows what the terminal would.

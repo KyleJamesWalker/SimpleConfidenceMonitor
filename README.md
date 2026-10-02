@@ -58,6 +58,9 @@ The image serves on 8080 and keeps rooms in `/data`, so mount a volume there.
 Those two come from `SCM_PORT` and `SCM_STATE_DIR` in the image, so an argument
 after the image name overrides them rather than colliding.
 
+The log prints the address to open. The picker at `/` builds the links for a room
+and shows a QR code for the stage display.
+
 For a window instead of a terminal, build the optional desktop app. It sets the
 port and token, starts and stops the server, lists rooms with their connected
 screens, and shows the log:
@@ -69,9 +72,6 @@ make app    # macOS: target/release/Simple Confidence Monitor.app
 ```
 
 [The desktop app](docs/operations.md#the-desktop-app) maps each field to its flag.
-
-The log prints the address to open. The picker at `/` builds the links for a room
-and shows a QR code for the stage display.
 
 ## Usage
 
