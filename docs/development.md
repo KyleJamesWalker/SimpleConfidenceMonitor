@@ -21,6 +21,7 @@ make soak     # measure clock drift for ten seconds
 make build    # release binary
 make gui      # debug build of the desktop app
 make app      # macOS only: release build, wrapped in a signed .app
+make icons    # macOS only: rebuild every icon file from icon.svg
 ```
 
 For local work, bind loopback rather than every interface:
@@ -57,8 +58,11 @@ web/
   picker.html    picker.css    picker.js
   shared.js      socket client, clock offset, readout, formatting
   *.test.mjs     the node test suites
+build.rs         embeds the Windows icon when the `gui` feature is on
 packaging/
-  macos/         Info.plist template and the script that builds the .app
+  icon/          icon.svg, the source for every icon, and the script that renders it
+  macos/         Info.plist template, AppIcon.icns, and the script that builds the .app
+  windows/       app.ico, embedded in the Windows .exe
 tests/           one file per area, all integration level
 ```
 
