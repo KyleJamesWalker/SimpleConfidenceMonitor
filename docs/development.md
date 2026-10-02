@@ -6,6 +6,8 @@ How to build it, how to test it, and the two rules that keep the frontend honest
 
 - Rust 1.94 or later
 - Node 20 or later, for the JavaScript tests only
+- On Linux, the desktop app also needs the X11 and Wayland headers that
+  [eframe lists](https://github.com/emilk/egui/tree/main/crates/eframe)
 - No other toolchain. There is no bundler, no package manager and no build step
   for the frontend
 
@@ -17,6 +19,9 @@ make lint     # clippy with warnings denied, and a format check
 make run      # debug build on port 8080
 make soak     # measure clock drift for ten seconds
 make build    # release binary
+make gui      # debug build of the desktop app
+make app      # macOS only: release build, wrapped in a signed .app
+make icons    # macOS only: rebuild every icon file from icon.svg
 ```
 
 For local work, bind loopback rather than every interface:
@@ -29,8 +34,10 @@ cargo run -- --port 8080 --bind 127.0.0.1
 
 ```
 src/
-  main.rs        clap CLI, tracing, startup, the autopilot task
+  main.rs        clap CLI and tracing, on top of server.rs
+  bin/gui/       the optional egui desktop app, behind the `gui` feature
   lib.rs         module list
+  server.rs      startup, shutdown, and the background tasks
   room.rs        RoomState, every command, the rundown and the presets
   timer.rs       the timer state machine and its readout
   hub.rs         room registry, restore, removal
@@ -51,6 +58,11 @@ web/
   picker.html    picker.css    picker.js
   shared.js      socket client, clock offset, readout, formatting
   *.test.mjs     the node test suites
+build.rs         embeds the Windows icon when the `gui` feature is on
+packaging/
+  icon/          icon.svg, the source for every icon, and the script that renders it
+  macos/         Info.plist template, AppIcon.icns, and the script that builds the .app
+  windows/       app.ico, embedded in the Windows .exe
 tests/           one file per area, all integration level
 ```
 
@@ -102,6 +114,8 @@ Two habits are worth keeping:
 ## Style
 
 `make lint` is the gate: `clippy` with warnings denied, and `cargo fmt --check`.
+It runs `clippy` twice, once with the `gui` feature, so the desktop app stays
+under the same gate.
 
 CI installs the latest stable Rust, which is usually ahead of a local toolchain.
 Clippy gains lints with each release, so a local pass on an older toolchain does

@@ -1,9 +1,10 @@
-.PHONY: test test-rust test-js soak run lint fmt build
+.PHONY: test test-rust test-js soak run gui app icons lint fmt build
 
 test: test-rust test-js
 
 test-rust:
 	cargo test
+	cargo test --features gui --bin simple-confidence-monitor-gui
 
 test-js:
 	node --test web/*.test.mjs
@@ -14,8 +15,19 @@ soak:
 run:
 	cargo run -- --port 8080
 
+gui:
+	cargo run --features gui --bin simple-confidence-monitor-gui
+
+app:
+	cargo build --release --features gui --bin simple-confidence-monitor-gui
+	packaging/macos/bundle.sh target/release/simple-confidence-monitor-gui target/release
+
+icons:
+	packaging/icon/render.sh
+
 lint:
 	cargo clippy --all-targets -- -D warnings
+	cargo clippy --all-targets --features gui -- -D warnings
 	cargo fmt --check
 
 fmt:

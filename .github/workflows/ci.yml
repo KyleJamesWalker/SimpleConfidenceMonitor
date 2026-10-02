@@ -36,8 +36,17 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
 
+      - name: Install desktop app headers
+        run: sudo apt-get update && sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev
+
+      - name: Clippy (desktop app)
+        run: cargo clippy --all-targets --features gui -- -D warnings
+
       - name: Test
         run: cargo test --locked
+
+      - name: Test (desktop app)
+        run: cargo test --locked --features gui --bin simple-confidence-monitor-gui
 
       - name: JavaScript syntax check
         run: for f in web/*.js; do node --check "$f"; done
@@ -124,6 +133,72 @@ jobs:
         with:
           name: ${{ matrix.asset }}
           path: ${{ matrix.asset }}${{ matrix.ext }}
+          if-no-files-found: error
+
+  build-gui:
+    name: build · ${{ matrix.asset }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            asset: simple-confidence-monitor-gui-x86_64-linux
+            file: simple-confidence-monitor-gui-x86_64-linux.tar.gz
+            apt: true
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            asset: simple-confidence-monitor-gui-aarch64-macos
+            file: simple-confidence-monitor-gui-aarch64-macos.zip
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            asset: simple-confidence-monitor-gui-x86_64-macos
+            file: simple-confidence-monitor-gui-x86_64-macos.zip
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            asset: simple-confidence-monitor-gui-x86_64-windows
+            file: simple-confidence-monitor-gui-x86_64-windows.exe
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.asset }}
+
+      - name: Install desktop app headers
+        if: matrix.apt
+        run: sudo apt-get update && sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev
+
+      - name: Build
+        run: cargo build --release --features gui --bin simple-confidence-monitor-gui --target ${{ matrix.target }} --locked
+
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        run: tar -czf "${{ matrix.file }}" -C "target/${{ matrix.target }}/release" simple-confidence-monitor-gui
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          packaging/macos/bundle.sh "target/${{ matrix.target }}/release/simple-confidence-monitor-gui" dist
+          ditto -c -k --keepParent "dist/Simple Confidence Monitor.app" "${{ matrix.file }}"
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: cp "target/${{ matrix.target }}/release/simple-confidence-monitor-gui.exe" "${{ matrix.file }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: ${{ matrix.file }}
           if-no-files-found: error
 
   docker:
