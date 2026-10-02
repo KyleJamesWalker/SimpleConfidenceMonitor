@@ -4,6 +4,7 @@ test: test-rust test-js
 
 test-rust:
 	cargo test
+	cargo test --features gui --bin simple-confidence-monitor-gui
 
 test-js:
 	node --test web/*.test.mjs

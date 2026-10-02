@@ -427,3 +427,19 @@ fn percent_encode(text: &str) -> String {
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::percent_encode;
+
+    #[test]
+    fn unreserved_characters_pass_through() {
+        assert_eq!(percent_encode("Az09-_.~"), "Az09-_.~");
+    }
+
+    #[test]
+    fn query_delimiters_and_non_ascii_are_encoded() {
+        assert_eq!(percent_encode("a b&c=d/#?+"), "a%20b%26c%3Dd%2F%23%3F%2B");
+        assert_eq!(percent_encode("é"), "%C3%A9");
+    }
+}

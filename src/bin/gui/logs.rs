@@ -75,3 +75,62 @@ impl<'a> MakeWriter<'a> for LogBuffer {
         LineWriter(self.clone())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::io::Write;
+
+    use super::*;
+
+    fn write(buffer: &LogBuffer, text: &str) {
+        buffer
+            .make_writer()
+            .write_all(text.as_bytes())
+            .expect("write");
+    }
+
+    fn lines(buffer: &LogBuffer) -> Vec<String> {
+        buffer.with_lines(|lines| lines.iter().cloned().collect())
+    }
+
+    #[test]
+    fn a_line_split_across_writes_lands_once_whole() {
+        let buffer = LogBuffer::default();
+        write(&buffer, "INFO list");
+        assert!(lines(&buffer).is_empty());
+        write(&buffer, "ening on 8080\n");
+        assert_eq!(lines(&buffer), ["INFO listening on 8080"]);
+    }
+
+    #[test]
+    fn one_write_can_carry_several_lines() {
+        let buffer = LogBuffer::default();
+        write(&buffer, "one\r\ntwo\nthree");
+        assert_eq!(lines(&buffer), ["one", "two"]);
+        write(&buffer, "\n");
+        assert_eq!(lines(&buffer), ["one", "two", "three"]);
+    }
+
+    #[test]
+    fn the_oldest_lines_fall_off_past_the_cap() {
+        let buffer = LogBuffer::default();
+        for index in 0..MAX_LINES + 5 {
+            write(&buffer, &format!("line {index}\n"));
+        }
+        let kept = lines(&buffer);
+        assert_eq!(kept.len(), MAX_LINES);
+        assert_eq!(kept.first().map(String::as_str), Some("line 5"));
+        assert_eq!(
+            kept.last().map(String::as_str),
+            Some(format!("line {}", MAX_LINES + 4).as_str())
+        );
+    }
+
+    #[test]
+    fn clear_empties_the_view() {
+        let buffer = LogBuffer::default();
+        write(&buffer, "one\n");
+        buffer.clear();
+        assert!(lines(&buffer).is_empty());
+    }
+}
