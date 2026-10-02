@@ -98,6 +98,9 @@ Discovery over mDNS needs host networking, so the image leaves it off. Pass
 - A syntax check over every frontend script
 - A release build of all six targets, so a cross-compile break shows up on the
   pull request rather than at release time
+- `clippy` over the desktop app, and a release build of it for Linux, macOS
+  and Windows. Each build uploads as a run artifact. A release does not ship
+  the desktop app yet, so these builds stay out of the matrix sync check
 - The matrix sync check
 - A Docker build, tagged for the pull request or for `main`
 

@@ -51,6 +51,38 @@ field is filled.
 Scripts send `Authorization: Bearer <value>` and get a plain refusal, since a
 form is no use to `curl`.
 
+## The desktop app
+
+`simple-confidence-monitor-gui` runs the same server from a window, for a laptop
+where nobody wants a terminal. It is an optional build: `make gui`, or the
+`simple-confidence-monitor-gui-*` artifact that CI attaches to each run.
+
+| Field | Flag it stands for |
+|---|---|
+| Port | `--port` |
+| Reachable from | `--bind`: this network is `0.0.0.0`, this computer only is `127.0.0.1` |
+| Operator token | `--token` |
+| State directory | `--state-dir` |
+| mDNS and Advertised name | `--mdns` and `--name` |
+
+The fields lock while the server runs. Stop it to change one. The window lists
+each room with its connected stage displays and consoles, and opens any screen
+in the default browser. A console link carries the token, so it skips the form.
+The log panel shows what the terminal would.
+
+The app remembers every field except the token, so the token never sits in a
+plain file. "Start on launch" starts the server when the window opens, using the
+saved fields. The settings live in `app.ron`:
+
+| OS | Folder |
+|---|---|
+| macOS | `~/Library/Application Support/Simple-Confidence-Monitor/` |
+| Linux | `~/.local/share/simpleconfidencemonitor/` |
+| Windows | `%APPDATA%\Simple Confidence Monitor\data\` |
+
+Closing the window stops the server the way Ctrl-C stops the CLI. Every socket
+closes and pending snapshots land before the app exits.
+
 ## During the show
 
 The console carries the timer, the message to the speaker, the screen controls,

@@ -105,6 +105,21 @@ The scan decides from a read and then writes, so it hands the same condition to
 `Room::apply_if`, which re-checks it under the write lock. An operator who
 disarms or reloads inside that window wins.
 
+### `src/server.rs`
+
+Startup and shutdown, shared by both binaries. `Server::start` restores rooms,
+spawns the snapshot writer and the autopilot, and binds the listener.
+`run_until` serves until its future resolves, then closes every socket and writes
+pending snapshots. A failed start returns a `StartError` rather than exiting, so
+the desktop app can show it and try again.
+
+### `src/bin/gui/`
+
+The optional desktop app, built with egui behind the `gui` Cargo feature. It
+runs `Server` on its own tokio runtime and reads room and client counts from the
+`Hub`. A tracing writer feeds the log view. The stage
+display and the console still run in a browser. The app opens them there.
+
 ### `src/discovery.rs`
 
 The optional mDNS advertisement, off unless `--mdns` says otherwise.
@@ -135,8 +150,8 @@ field takes its default.
 
 ## Configuration and deployment
 
-Configuration is command-line only, and the binary holds no state beyond an
-optional snapshot directory. See [operations.md](operations.md) for the flags
+Configuration is command-line only, or the form in the desktop app. The server
+holds no state beyond an optional snapshot directory. See [operations.md](operations.md) for the flags
 and [release.md](release.md) for what ships.
 
 The readout math lives twice, in `src/timer.rs` and in `web/shared.js`, because
