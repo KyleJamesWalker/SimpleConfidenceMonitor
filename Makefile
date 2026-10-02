@@ -1,4 +1,4 @@
-.PHONY: test test-rust test-js soak run lint fmt build
+.PHONY: test test-rust test-js soak run gui lint fmt build
 
 test: test-rust test-js
 
@@ -14,8 +14,12 @@ soak:
 run:
 	cargo run -- --port 8080
 
+gui:
+	cargo run --features gui --bin simple-confidence-monitor-gui
+
 lint:
 	cargo clippy --all-targets -- -D warnings
+	cargo clippy --all-targets --features gui -- -D warnings
 	cargo fmt --check
 
 fmt:
