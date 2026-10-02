@@ -1,4 +1,4 @@
-.PHONY: test test-rust test-js soak run gui lint fmt build
+.PHONY: test test-rust test-js soak run gui app lint fmt build
 
 test: test-rust test-js
 
@@ -16,6 +16,10 @@ run:
 
 gui:
 	cargo run --features gui --bin simple-confidence-monitor-gui
+
+app:
+	cargo build --release --features gui --bin simple-confidence-monitor-gui
+	packaging/macos/bundle.sh target/release/simple-confidence-monitor-gui target/release
 
 lint:
 	cargo clippy --all-targets -- -D warnings
