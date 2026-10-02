@@ -142,14 +142,16 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             asset: simple-confidence-monitor-gui-x86_64-linux
+            file: simple-confidence-monitor-gui-x86_64-linux.tar.gz
             apt: true
           - os: macos-latest
             target: aarch64-apple-darwin
             asset: simple-confidence-monitor-gui-aarch64-macos
+            file: simple-confidence-monitor-gui-aarch64-macos.zip
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             asset: simple-confidence-monitor-gui-x86_64-windows
-            ext: .exe
+            file: simple-confidence-monitor-gui-x86_64-windows.exe
     steps:
       - uses: actions/checkout@v4
 
@@ -170,15 +172,26 @@ jobs:
       - name: Build
         run: cargo build --release --features gui --bin simple-confidence-monitor-gui --target ${{ matrix.target }} --locked
 
-      - name: Stage artifact
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        run: tar -czf "${{ matrix.file }}" -C "target/${{ matrix.target }}/release" simple-confidence-monitor-gui
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          packaging/macos/bundle.sh "target/${{ matrix.target }}/release/simple-confidence-monitor-gui" dist
+          ditto -c -k --keepParent "dist/Simple Confidence Monitor.app" "${{ matrix.file }}"
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
         shell: bash
-        run: cp "target/${{ matrix.target }}/release/simple-confidence-monitor-gui${{ matrix.ext }}" "${{ matrix.asset }}${{ matrix.ext }}"
+        run: cp "target/${{ matrix.target }}/release/simple-confidence-monitor-gui.exe" "${{ matrix.file }}"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
-          path: ${{ matrix.asset }}${{ matrix.ext }}
+          path: ${{ matrix.file }}
           if-no-files-found: error
 
   docker:
