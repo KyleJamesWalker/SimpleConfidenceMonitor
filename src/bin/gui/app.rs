@@ -47,6 +47,8 @@ struct Live {
     host: String,
     hub: Arc<Hub>,
     advertised_as: Option<String>,
+    /// No token, on an address other machines can reach.
+    unguarded: bool,
 }
 
 impl Live {
@@ -150,6 +152,7 @@ impl App {
                         host: advertised_host(config.bind),
                         hub: server.hub(),
                         advertised_as: server.advertised_as().map(str::to_string),
+                        unguarded: config.token.is_none() && !config.bind.is_loopback(),
                     }));
                     ctx.request_repaint();
                     server
@@ -212,6 +215,15 @@ impl App {
                 }
             }
         });
+        if let Phase::Running(live) = &self.phase
+            && live.unguarded
+        {
+            ui.colored_label(
+                Color32::from_rgb(0xf6, 0xb3, 0x1c),
+                "No operator token: anyone on this network can control every room. \
+                 Stop the server and set one.",
+            );
+        }
         if let Some(err) = &self.error {
             ui.colored_label(Color32::LIGHT_RED, err);
         }
