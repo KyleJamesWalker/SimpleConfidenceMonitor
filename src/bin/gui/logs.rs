@@ -36,16 +36,20 @@ impl LogBuffer {
     }
 
     fn append(&self, bytes: &[u8]) {
-        let mut inner = self.inner.lock().expect("log lock");
-        inner.partial.push_str(&String::from_utf8_lossy(bytes));
-        while let Some(end) = inner.partial.find('\n') {
-            let line: String = inner.partial.drain(..=end).collect();
-            inner.lines.push_back(line.trim_end().to_string());
-            if inner.lines.len() > MAX_LINES {
-                inner.lines.pop_front();
+        let repaint = {
+            let mut inner = self.inner.lock().expect("log lock");
+            inner.partial.push_str(&String::from_utf8_lossy(bytes));
+            while let Some(end) = inner.partial.find('\n') {
+                let line: String = inner.partial.drain(..=end).collect();
+                inner.lines.push_back(line.trim_end().to_string());
+                if inner.lines.len() > MAX_LINES {
+                    inner.lines.pop_front();
+                }
             }
-        }
-        if let Some(ctx) = &inner.repaint {
+            inner.repaint.clone()
+        };
+        // Outside the lock: a repaint that logs would otherwise re-enter it and hang.
+        if let Some(ctx) = repaint {
             ctx.request_repaint();
         }
     }
