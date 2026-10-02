@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3676b4"/>
+      <stop offset="0.45" stop-color="#1d376a"/>
+      <stop offset="1" stop-color="#111c50"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0" r="0.6">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5cbd63"/>
+      <stop offset="1" stop-color="#43a04c"/>
+    </linearGradient>
+    <linearGradient id="amber" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6b31c"/>
+      <stop offset="1" stop-color="#e09a12"/>
+    </linearGradient>
+    <linearGradient id="red" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ef4234"/>
+      <stop offset="1" stop-color="#d9302a"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#tile)"/>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#glow)"/>
+  <g transform="translate(512 530) scale(0.93) translate(-512 -512)">
+  <path d="M 512.0 212.0 A 300 300 0 1 1 212.0 512.0" fill="none" stroke="url(#green)" stroke-width="74"/>
+  <path d="M 212.0 512.0 A 300 300 0 0 1 335.7 269.3" fill="none" stroke="url(#amber)" stroke-width="74"/>
+  <path d="M 335.7 269.3 A 300 300 0 0 1 512.0 212.0" fill="none" stroke="url(#red)" stroke-width="74"/>
+  <line x1="512.0" y1="251.0" x2="512.0" y2="173.0" stroke="#0f1b45" stroke-width="18"/>
+  <line x1="251.0" y1="512.0" x2="173.0" y2="512.0" stroke="#0f1b45" stroke-width="18"/>
+  <line x1="358.6" y1="300.8" x2="312.7" y2="237.7" stroke="#0f1b45" stroke-width="18"/>
+  <line x1="863.0" y1="512.0" x2="891.0" y2="512.0" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+  <line x1="512.0" y1="863.0" x2="512.0" y2="891.0" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+  <line x1="161.0" y1="512.0" x2="133.0" y2="512.0" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+
+  <path d="M 444.0 302.8 L 536.7 504.0 L 487.3 520.0 Z" fill="#ffffff" stroke="#ffffff" stroke-width="10" stroke-linejoin="round"/>
+  <circle cx="512" cy="512" r="44" fill="#ffffff"/>
+  <circle cx="512" cy="512" r="16" fill="#1d376a"/>
+  </g>
+  <rect x="474" y="132" width="76" height="34" rx="10" fill="#ffffff"/>
+  <rect x="497" y="160" width="30" height="30" fill="#ffffff"/>
+</svg>

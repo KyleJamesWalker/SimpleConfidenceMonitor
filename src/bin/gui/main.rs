@@ -24,7 +24,13 @@ fn main() -> eframe::Result {
         viewport: egui::ViewportBuilder::default()
             .with_title("Simple Confidence Monitor")
             .with_inner_size([760.0, 680.0])
-            .with_min_inner_size([520.0, 440.0]),
+            .with_min_inner_size([520.0, 440.0])
+            .with_icon(
+                eframe::icon_data::from_png_bytes(include_bytes!(
+                    "../../../packaging/icon/icon-256.png"
+                ))
+                .expect("embedded icon"),
+            ),
         ..Default::default()
     };
     eframe::run_native(
