@@ -20,6 +20,7 @@ make run      # debug build on port 8080
 make soak     # measure clock drift for ten seconds
 make build    # release binary
 make gui      # debug build of the desktop app
+make app      # macOS only: release build, wrapped in a signed .app
 ```
 
 For local work, bind loopback rather than every interface:
@@ -56,6 +57,8 @@ web/
   picker.html    picker.css    picker.js
   shared.js      socket client, clock offset, readout, formatting
   *.test.mjs     the node test suites
+packaging/
+  macos/         Info.plist template and the script that builds the .app
 tests/           one file per area, all integration level
 ```
 

@@ -54,8 +54,22 @@ form is no use to `curl`.
 ## The desktop app
 
 `simple-confidence-monitor-gui` runs the same server from a window, for a laptop
-where nobody wants a terminal. It is an optional build: `make gui`, or the
-`simple-confidence-monitor-gui-*` artifact that CI attaches to each run.
+where nobody wants a terminal. It is an optional build. `make app` builds
+`Simple Confidence Monitor.app` into `target/release`, and CI attaches a build
+for each platform to every run:
+
+| Artifact | Contains |
+|---|---|
+| `simple-confidence-monitor-gui-aarch64-macos` | `Simple Confidence Monitor.app`, zipped |
+| `simple-confidence-monitor-gui-x86_64-windows` | The `.exe`. It opens no console window |
+| `simple-confidence-monitor-gui-x86_64-linux` | The binary in a `.tar.gz`, which keeps it executable |
+
+The macOS app carries an ad-hoc signature and no Apple notarization. Gatekeeper
+blocks a downloaded copy until its quarantine flag is cleared:
+
+```bash
+xattr -dr com.apple.quarantine "Simple Confidence Monitor.app"
+```
 
 | Field | Flag it stands for |
 |---|---|

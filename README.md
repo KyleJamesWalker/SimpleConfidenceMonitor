@@ -65,6 +65,7 @@ screens, and shows the log:
 ```bash
 cargo build --release --features gui --bin simple-confidence-monitor-gui
 ./target/release/simple-confidence-monitor-gui
+make app    # macOS: target/release/Simple Confidence Monitor.app
 ```
 
 [The desktop app](docs/operations.md#the-desktop-app) maps each field to its flag.
